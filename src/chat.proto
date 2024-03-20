@@ -1,0 +1,100 @@
+// SINTAXIS PROTO3 PARA PODER TENER OBJETOS :)
+syntax = "proto3";
+
+package chat;
+
+// REGISTRO DE USUARIOS NUEVOS
+message UserRegistration {
+     string username = 1;
+     string ip = 2;
+}
+
+
+// INFORMACION DEL USUARIO BASE
+message UserInfo {
+     string username = 1;
+     string status = 2;
+     string ip = 3;
+}
+
+
+// SOLICITAR INFORMACION DE UN USUARIO O DE TODOS
+// user: (username || everyone)
+message UserRequest {
+     string user = 1;
+}
+
+
+// ENVIADO POR EL SERVIDOR
+message ConnectedUsersResponse {
+    repeated UserInfo connectedUsers = 1;
+}
+
+
+// CAMBIAR DE ESTADO
+// activo, inactivo, ocupado
+message ChangeStatus {
+     string username = 1;
+     string status = 2;
+}
+
+
+// ENVIO DE MENSAJES (DIRECTOS || PA TODOS)
+// recipient: (username || everyone)
+// sender: username del remitente
+message MessageCommunication {
+     string message = 1;
+     string recipient = 2;
+     string sender = 3;
+}
+
+
+// option 1: Registro de Usuarios
+// option 2: Usuarios Conectados
+// option 3: Cambio de Estado
+// option 4: Mensajes
+// option 5: Informacion de un usuario en particular
+//(SON LAS MISMAS OPCIONES QUE LO QUE RESPONDERA EL SERVER PARA ESTAR EN EL MISMO FORMATO)
+// PARA LA INFO DE TODOS LOS USUARIOS CONECTADOS MANDAR UN UserRequest con everyone
+// PARA LA INFO DE SOLO 1 USUARIO MANDAR UN UserRequest con el username
+message ClientPetition {
+     int32 option = 1;
+
+     UserRegistration registration = 2;
+
+     UserRequest users = 3;
+
+     ChangeStatus change = 4;
+
+     MessageCommunication messageCommunication = 5;
+}
+
+
+// option 1: Registro de Usuarios
+// option 2: Usuarios Conectados
+// option 3: Cambio de Estado
+// option 4: Mensajes
+// option 5: Informacion de un usuario en particular
+// codigo 200: Exito
+// codigo 500: Fallo
+// EN RESPUESTA A UNA SOLICITUD DEL CLIENTE POR EJEMPLO: REGISTRO DE USUARIOS
+// EL SERVER RETORNA:
+//OPCION,
+//CODIGO
+//MENSAJE DEL SERVIDOR
+// PARA SABER SI EL REQUEST FUE SUCCESS O ALGO MURIO EN EL SERVER 
+message ServerResponse {
+     int32 option = 1;
+
+     int32 code = 2;
+
+     string serverMessage = 3;
+
+     ConnectedUsersResponse connectedUsers = 4;
+
+     MessageCommunication messageCommunication = 5;
+
+     UserInfo userInfoResponse = 6;
+
+     ChangeStatus change = 7;
+}
