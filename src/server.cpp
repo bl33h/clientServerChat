@@ -6,12 +6,12 @@ FileName: server.cpp
 Creation: 19/03/2024
 Last modification: 19/03/2024
 ------------------------------------------------------------------------------*/
-#include <iostream>
-#include <string>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "chat.pb.h"  
+#include <iostream>
 #include <unistd.h>
-#include "chat.pb.h"  // Include the protobuf generated header file
+#include <string>
 
 int main() {
     int serverFd, newSocket;
@@ -31,7 +31,7 @@ int main() {
 
     newSocket = accept(serverFd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
-    // Read message from client
+    // read message from client
     read(newSocket, buffer, 1024);
     chat::MessageCommunication msg;
     msg.ParseFromArray(buffer, 1024);
