@@ -12,81 +12,39 @@ Last modification: 30/03/2024
 #include "chat.pb.h"
 #include <iostream>
 #include <unistd.h>
+#include <thread>
+#include <string>
 
+void sendMessage(int sock, const std::string& username);
+void receiveMessages(int sock);
 void menu();
-void help();
-void sendMessage(int sock);
 
-int main() {
-    int sock = 0;
-    struct sockaddr_in serv_addr;
+void sendMessage(int sock, const std::string& username) {
+    chat::MessageCommunication msg;
+    msg.set_sender(username);
+    std::string messageContent;
+    std::cout << "Enter your message: ";
+    std::cin.ignore();
+    std::getline(std::cin, messageContent);
+    msg.set_message(messageContent);
+    std::string serializedMsg;
+    msg.SerializeToString(&serializedMsg);
+    send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
+    std::cout << "Message sent to server.\n";
+}
 
-    // initialize protocol buffers library
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // socket creation
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        std::cerr << "\nSocket creation error\n";
-        return -1;
-    }
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(8080); // port number
-
-    // binary ip convertion
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-        std::cerr << "\nInvalid address/ Address not supported\n";
-        return -1;
-    }
-
-    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-        std::cerr << "\nConnection Failed\n";
-        return -1;
-    }
-
-    menu();
-
-    int command = 0;
-    do {
-        std::cout << "Enter command: ";
-        std::cin >> command;
-
-        switch (command) {
-            case 1:
-                sendMessage(sock);
-                break;
-
-            case 2:
-                break;
-
-            case 3:
-                break;
-
-            case 4:
-                break;
-
-            case 5:
-                break;
-
-            case 6:
-                help();
-                break;
-
-            case 7:
-                std::cout << "Exiting...\n";
-                break;
-
-            default:
-                std::cout << "Invalid command. Please try again.\n";
-                break;
+void receiveMessages(int sock) {
+    while (true) {
+        char buffer[1024] = {0};
+        int bytesReceived = read(sock, buffer, 1024);
+        if (bytesReceived <= 0) {
+            // Handle disconnection or error
+            break;
         }
-    } while (command != 7);
-
-    // socket cleanup
-    close(sock);
-    google::protobuf::ShutdownProtobufLibrary();
-
-    return 0;
+        chat::MessageCommunication msg;
+        msg.ParseFromArray(buffer, bytesReceived);
+        std::cout << msg.sender() << ": " << msg.message() << std::endl;
+    }
 }
 
 // available options menu
@@ -124,27 +82,78 @@ void help() {
     }
 }
 
-void sendMessage(int sock) {
+int main() {
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    std::string username;
+
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        std::cerr << "\nSocket creation error\n";
+        return -1;
+    }
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(8080);
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+        std::cerr << "\nInvalid address/ Address not supported\n";
+        return -1;
+    }
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        std::cerr << "\nConnection Failed\n";
+        return -1;
+    }
+
+    std::cout << "Enter your username: ";
+    std::getline(std::cin, username);
+
+    // send the username as the first message to the server
     chat::MessageCommunication msg;
-
-    // sender
-    msg.set_sender("ClientUsername"); 
-
-    // recipient
-    msg.set_recipient("General"); 
-    std::string messageContent;
-
-    // input
-    std::cout << "Enter your message: ";
-    std::cin.ignore();
-    std::getline(std::cin, messageContent);
-    msg.set_message(messageContent);
-
-    // serialize message
+    msg.set_sender(username);
     std::string serializedMsg;
     msg.SerializeToString(&serializedMsg);
-
     send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
 
-    std::cout << "Message sent to server.\n";
+    // start receiving messages in a separate thread
+    std::thread(receiveMessages, sock).detach(); 
+
+    menu();
+    int command = 0;
+    do {
+        std::cout << "Enter option: ";
+        std::cin >> command;
+        switch (command) {
+            case 1:
+                sendMessage(sock, username);
+                break;
+
+            case 2:
+                break;
+
+            case 3:
+                break;
+
+            case 4:
+                break;
+
+            case 5:
+                break;
+
+            case 6:
+                help();
+                break;
+
+            case 7:
+                std::cout << "Exiting...\n";
+                break;
+
+            default:
+                std::cout << "Invalid command. Please try again.\n";
+                break;
+        }
+    } while (command != 7);
+
+    close(sock);
+    google::protobuf::ShutdownProtobufLibrary();
+    return 0;
 }
