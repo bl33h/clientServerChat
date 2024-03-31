@@ -15,9 +15,11 @@ Last modification: 30/03/2024
 #include <unistd.h>
 #include <thread>
 #include <string>
+#include <atomic>
 
 // ------- variables -------
 void sendMessage(int sock, const std::string& username);
+std::atomic<bool> isInGeneralRoom{false};
 void receiveMessages(int sock);
 void menu();
 
@@ -83,8 +85,15 @@ void sendMessage(int sock, const std::string& username) {
     std::cin.ignore();
     std::getline(std::cin, messageContent);
     msg.set_message(messageContent);
+
+    // Serialize the message to a string
     std::string serializedMsg;
-    msg.SerializeToString(&serializedMsg);
+    if (!msg.SerializeToString(&serializedMsg)) {
+        std::cerr << "Failed to serialize message." << std::endl;
+        return;
+    }
+
+    // Send the serialized message to the server
     send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
     std::cout << "Message sent to server.\n";
 }
@@ -95,11 +104,23 @@ void receiveMessages(int sock) {
         char buffer[1024] = {0};
         int bytesReceived = read(sock, buffer, 1024);
         if (bytesReceived <= 0) {
+            // Handle disconnects or errors
             break;
         }
+
         chat::MessageCommunication msg;
-        msg.ParseFromArray(buffer, bytesReceived);
-        std::cout << msg.sender() << ": " << msg.message() << std::endl;
+        if (msg.ParseFromArray(buffer, bytesReceived)) {
+            if (isInGeneralRoom.load()) {
+                // Temporarily clear the line and display the incoming message
+                std::cout << "\r\033[K" << msg.sender() << ": " << msg.message() << std::endl;
+                
+                // Re-display the input prompt
+                std::cout << "[Your message]: " << std::flush;
+            }
+        } else {
+            std::cerr << "\r\033[KFailed to parse message." << std::endl;
+            std::cout << "[Your message]: " << std::flush;
+        }
     }
 }
 
@@ -119,7 +140,7 @@ int main() {
     serv_addr.sin_port = htons(8080);
 
     // initialize serv_addr.sin_addr.s_addr
-    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr)<=0) {
+    if(inet_pton(AF_INET, "172.18.80.3", &serv_addr.sin_addr)<=0) {
         std::cerr << "\nInvalid address/ Address not supported \n";
         return -1;
     }
@@ -131,7 +152,7 @@ int main() {
     }
 
     std::cout << "<------- Welcome to the chat ------->" << std::endl;
-    std::cout << "Local IP addresses:" << std::endl;
+    std::cout << "<< Your info >>" << std::endl;
     printLocalIPAddresses();
     std::cout << "Enter your username: ";
     std::getline(std::cin, username);
@@ -145,21 +166,50 @@ int main() {
     menu();
     int command = 0;
     do {
-    std::cout << "Enter option: ";
+    std::cout << "Enter option: \n";
     std::cin >> command;
 
-    // clear input buffer and reset error flags if the input is invalid
     if(std::cin.fail()) {
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        std::cout << "Invalid input. Please enter a number.\n";
         continue;
     }
-
+    bool
+     userIsTyping = false;
     switch (command) {
         case 1:
-            std::cout << "<<<--- You are now in the general chatroom with everybody --->>>\n";
-            sendMessage(sock, username);
+            isInGeneralRoom.store(true);
+            std::cout << "<<<--- You are now in the general chatroom. Type '/exit' to leave --->>>\n";
+            do {
+                std::cout << "[Your message]: ";
+                std::string messageContent;
+                std::getline(std::cin >> std::ws, messageContent); // Capture user message
+
+                if (messageContent == "/exit") {
+                    break; // Exit the chatroom loop, back to main menu
+                }
+
+                // Set flag indicating user is typing a message
+                userIsTyping = true;
+
+                chat::MessageCommunication msg;
+                msg.set_sender(username);
+                msg.set_message(messageContent);
+
+                // Serialize and send the message
+                std::string serializedMsg;
+                if (!msg.SerializeToString(&serializedMsg)) {
+                    std::cerr << "Failed to serialize message.\n";
+                    userIsTyping = false; // Reset flag as sending failed
+                    continue; // Skip sending this message
+                }
+
+                send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
+                userIsTyping = false; // Reset flag after sending
+                std::cout << "\n"; // Ensure clear separation after sending
+            } while (true);
+
+            isInGeneralRoom.store(false);
             break;
 
         case 2:
