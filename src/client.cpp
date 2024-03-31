@@ -86,14 +86,14 @@ void sendMessage(int sock, const std::string& username) {
     std::getline(std::cin, messageContent);
     msg.set_message(messageContent);
 
-    // Serialize the message to a string
+    // serialize the message to a string
     std::string serializedMsg;
     if (!msg.SerializeToString(&serializedMsg)) {
         std::cerr << "Failed to serialize message." << std::endl;
         return;
     }
 
-    // Send the serialized message to the server
+    // send the serialized message to the server
     send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
     std::cout << "Message sent to server.\n";
 }
@@ -186,27 +186,33 @@ int main() {
                 std::getline(std::cin >> std::ws, messageContent); // Capture user message
 
                 if (messageContent == "/exit") {
-                    break; // Exit the chatroom loop, back to main menu
+                    break;
                 }
 
-                // Set flag indicating user is typing a message
+                // set flag indicating user is typing a message
                 userIsTyping = true;
 
                 chat::MessageCommunication msg;
                 msg.set_sender(username);
                 msg.set_message(messageContent);
 
-                // Serialize and send the message
+                // serialize and send the message
                 std::string serializedMsg;
                 if (!msg.SerializeToString(&serializedMsg)) {
                     std::cerr << "Failed to serialize message.\n";
-                    userIsTyping = false; // Reset flag as sending failed
-                    continue; // Skip sending this message
+
+                    // reset flag as sending failed
+                    userIsTyping = false; 
+                    continue;
                 }
 
                 send(sock, serializedMsg.c_str(), serializedMsg.size(), 0);
-                userIsTyping = false; // Reset flag after sending
-                std::cout << "\n"; // Ensure clear separation after sending
+
+                // reset flag after sending
+                userIsTyping = false;
+
+                // ensure clear separation after sending
+                std::cout << "\n"; 
             } while (true);
 
             isInGeneralRoom.store(false);
