@@ -125,7 +125,13 @@ void receiveMessages(int sock) {
 }
 
 // main method
-int main() {
+int main(int argc, char *argv[]) {
+
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <port>" << std::endl;
+        return 1;
+    }
+    int port = std::stoi(argv[1]);
     int sock = 0;
     std::string username;
     struct sockaddr_in serv_addr;
@@ -137,7 +143,7 @@ int main() {
     }
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(8080);
+    serv_addr.sin_port = htons(port);
 
     // initialize serv_addr.sin_addr.s_addr
     if(inet_pton(AF_INET, "172.18.80.3", &serv_addr.sin_addr)<=0) {
