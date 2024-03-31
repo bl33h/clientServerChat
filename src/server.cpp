@@ -4,7 +4,7 @@ Copyright (C), 2024-2025, bl33h & Mendezg1
 FileName: server.cpp
 @version: I
 Creation: 19/03/2024
-Last modification: 19/03/2024
+Last modification: 30/03/2024
 ------------------------------------------------------------------------------*/
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -15,21 +15,26 @@ Last modification: 19/03/2024
 #include <string>
 #include <thread>
 #include <vector>
-#include <map>
 #include <mutex>
+#include <map>
 
+// ------- variables -------
 std::map<int, std::pair<std::string, std::string>> clients; // Map socket to <username, IP>
 std::mutex clientsMutex;
 
+// ------- methods -------
+// handle client messages
 void handleClient(int clientSocket, sockaddr_in clientAddr) {
     char buffer[1024] = {0};
     std::string clientIP = inet_ntoa(clientAddr.sin_addr);
     
-    // Initially, read the username
+    // read the username
     read(clientSocket, buffer, 1024);
     chat::MessageCommunication msg;
     msg.ParseFromArray(buffer, 1024);
-    std::string username = msg.sender(); // Assume the first message from the client is the username
+
+    // assume the first message from the client is the username
+    std::string username = msg.sender(); 
 
     {
         std::lock_guard<std::mutex> lock(clientsMutex);
@@ -37,16 +42,17 @@ void handleClient(int clientSocket, sockaddr_in clientAddr) {
     }
 
     while (true) {
-        // Clear the buffer and read the new message
+        // clear the buffer and read the new message
         memset(buffer, 0, sizeof(buffer));
         int readBytes = read(clientSocket, buffer, 1024);
         if (readBytes == 0) {
-            break; // Client disconnected
+            // client disconnected
+            break; 
         }
         msg.ParseFromArray(buffer, readBytes);
         std::cout << "Message from " << username << " (" << clientIP << "): " << msg.message() << std::endl;
 
-        // Broadcast message to all other clients
+        // broadcast message to all other clients
         std::lock_guard<std::mutex> lock(clientsMutex);
         for (auto& client : clients) {
             if (client.first != clientSocket) { // Don't echo back to the sender
@@ -55,7 +61,7 @@ void handleClient(int clientSocket, sockaddr_in clientAddr) {
         }
     }
 
-    // Remove the disconnected client
+    // remove the disconnected client
     {
         std::lock_guard<std::mutex> lock(clientsMutex);
         clients.erase(clientSocket);
@@ -63,6 +69,7 @@ void handleClient(int clientSocket, sockaddr_in clientAddr) {
     close(clientSocket);
 }
 
+// main method
 int main() {
     int serverFd;
     struct sockaddr_in address;
@@ -76,12 +83,16 @@ int main() {
     address.sin_port = htons(8080);
 
     bind(serverFd, (struct sockaddr *)&address, sizeof(address));
-    listen(serverFd, 10); // Increase backlog for more pending connections
+
+    // increase backlog for more pending connections
+    listen(serverFd, 10); 
 
     while (true) {
         struct sockaddr_in clientAddr;
         int clientSocket = accept(serverFd, (struct sockaddr *)&clientAddr, (socklen_t*)&addrlen);
-        std::thread(handleClient, clientSocket, clientAddr).detach(); // Handle each client in a separate thread
+
+        // handle each client in a separate thread
+        std::thread(handleClient, clientSocket, clientAddr).detach(); 
     }
 
     close(serverFd);
