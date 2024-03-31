@@ -158,6 +158,7 @@ int main() {
 
     switch (command) {
         case 1:
+            std::cout << "<<<--- You are now in the general chatroom with everybody --->>>\n";
             sendMessage(sock, username);
             break;
 
