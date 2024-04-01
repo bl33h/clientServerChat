@@ -10,84 +10,299 @@ Last modification: 31/03/2024
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <pthread.h>
 #include "chat.pb-c.h"
 
-#define PORT 8080
-#define MAX_CLIENTS 10
+// --- variables ---
+#define BACKLOG 10
+#define MAX_USERS 25
+#define BUFFER_SIZE 1024
 
-// Thread function to handle clients
-void* handle_client(void* arg) {
-    int clientSocket = *(int*)arg;
-    free(arg); // Since we dynamically allocated memory for the thread argument
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-    Chat__MessageCommunication *msg;
-    uint8_t buffer[1024];
+typedef struct {
+    char username[100];
+    char ip[100];
+    int socketFD;
+    int status;
+    time_t activityTimer;
+} User;
 
-    // Read the username
-    ssize_t bytes_read = read(clientSocket, buffer, 1024);
-    if (bytes_read > 0) {
-        msg = chat__message_communication__unpack(NULL, bytes_read, buffer);
-        if (msg == NULL) {
-            fprintf(stderr, "Error unpacking incoming message\n");
-        }
-        printf("User %s connected\n", msg->sender);
-        // Free the unpacked message
-        printf("Message from client: %s\n", msg->message);
-        chat__message_communication__free_unpacked(msg, NULL);
+User userList[MAX_USERS];
+int numUsers = 0;
+int clientsCount = 0; 
+
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void addUser(char * username, char * ip, int socketFD, int status) {
+    if (numUsers >= MAX_USERS) {
+        printf("SERVER AT FULL CAPACITY. UNABLE TO ADD NEW USERS.\n");
+        return;
     }
-
-    // Cleanup
-    close(clientSocket);
-    return NULL;
+    User newUser;
+    strcpy(newUser.username, username);
+    strcpy(newUser.ip, ip);
+    newUser.socketFD = socketFD;
+    newUser.status = status;
+    newUser.activityTimer = time(NULL);
+    userList[numUsers] = newUser;
+    numUsers++;
 }
 
-int main() {
-    int server_fd, new_socket, *new_sock;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-
-    // Creating socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
-
-    // Attaching socket to the port 8080
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address))<0) {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(server_fd, MAX_CLIENTS) < 0) {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
-
-    // Accepting clients
-    while(1) {
-        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen))<0) {
-            perror("accept");
-            continue;
-        }
-
-        pthread_t thread_id;
-        new_sock = malloc(sizeof(int));
-        *new_sock = new_socket;
-        if (pthread_create(&thread_id, NULL, handle_client, (void*) new_sock) != 0) {
-            perror("pthread_create failed");
+int userExists(char * username) {
+    pthread_mutex_lock(&lock);
+    for (int i = 0; i < numUsers; i++) {
+        if (strcmp(userList[i].username, username) == 0) {
+            pthread_mutex_unlock(&lock);
+            return 1;
         }
     }
+    pthread_mutex_unlock(&lock);
+    return 0;
+}
 
+// function to handle the clients requests
+
+void * handleClient(void * arg) {
+    int client_socket = *(int *) arg;
+    uint8_t recv_buffer[BUFFER_SIZE];
+    ssize_t recv_size = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
+    if (recv_size < 0) {
+        perror("!error, unable to get message");
+        exit(1);
+    }
+
+    Chat__ClientPetition *user_registration = chat__client_petition__unpack(NULL, recv_size, recv_buffer);
+    if (user_registration == NULL) {
+        fprintf(stderr, "!error, unable to unpack message\n");
+        exit(1);
+    }
+    Chat__UserRegistration *chat_registration = user_registration->registration;
+
+    printf("\n > connected >user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
+
+    User MyInfo;
+    strcpy(MyInfo.username, chat_registration->username);
+    strcpy(MyInfo.ip, chat_registration->ip);
+    MyInfo.socketFD = client_socket;
+
+    Chat__ServerResponse server_response_registro = CHAT__SERVER_RESPONSE__INIT;
+
+    if (!userExists(chat_registration->username)) {
+        addUser(chat_registration->username, chat_registration->ip, client_socket, 1);
+        server_response_registro.option = 0;
+        server_response_registro.code = 200;
+        server_response_registro.servermessage = "success";
+    } else {
+        server_response_registro.option = 0;
+        server_response_registro.code = 400;
+        server_response_registro.servermessage = "already signed up";
+    }
+
+    size_t serialized_size_servidor_registro = chat__server_response__get_packed_size(&server_response_registro);
+    uint8_t *server_buffer_registro = malloc(serialized_size_servidor_registro);
+    chat__server_response__pack(&server_response_registro, server_buffer_registro);
+
+    if (send(MyInfo.socketFD, server_buffer_registro, serialized_size_servidor_registro, 0) < 0) {
+        perror("!error unable to send response");
+        exit(1);
+    }
+    free(server_buffer_registro);
+    chat__client_petition__free_unpacked(user_registration, NULL);
+
+    printf("\n\n --- Menu --- ([%s])\n", MyInfo.username);
+    while (1) {
+
+        printf("\n");
+        uint8_t recv_buffer_option[BUFFER_SIZE];
+        ssize_t recv_size_option = recv(client_socket, recv_buffer_option, sizeof(recv_buffer_option), 0);
+        
+        if (recv_size_option < 0) {
+            perror("!error unable to receive message");
+            exit(1);
+        }
+
+        if (recv_size_option == 0) {
+            perror("!client disconnected");
+            break;
+        }
+
+        Chat__ClientPetition * client_option = chat__client_petition__unpack(NULL, recv_size_option, recv_buffer_option);
+        if (client_option == NULL) {
+            fprintf(stderr, "!error unable tu unpack\n");
+            exit(1);
+        }
+
+        int selected_option = client_option -> option;
+        printf("[%s] --- Available options --- [%d]", MyInfo.username, selected_option);
+
+        switch (selected_option){
+            case 1:{
+                printf("\n");
+                Chat__MessageCommunication *received_message = client_option->messagecommunication;
+
+                for (int i = 0; i < numUsers; i++){
+                    if (strcmp(userList[i].username, MyInfo.username) == 0){
+                        if (userList[i].status == 3){
+                            userList[i].status = 1;
+                        }
+                        userList[i].activityTimer = time(NULL);
+                        continue;
+                    }
+
+                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                    server_response.option= 1;
+                    server_response.code = 200;
+                    server_response.servermessage = received_message;
+
+                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                    uint8_t *server_buffer = malloc(serialized_size_server);
+                    chat__server_response__pack(&server_response, server_buffer);
+
+                    if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        perror("!error in response");
+                        exit(1);
+                    }
+
+                    free(server_buffer);
+                }
+                break;
+            }
+            case 2:{
+                printf("\n");
+                Chat__MessageCommunication *direct_message = client_option->messagecommunication;
+
+                int sendMessage = 0;
+                int userId = 0;
+                for (int i = 0; i < numUsers; i++){
+                    if (strcmp(userList[i].username, direct_message->recipient) == 0){
+                        if (userList[i].status == 3){
+                            userList[i].status = 1;
+                        }
+                        userList[i].activityTimer = time(NULL);
+                        sendMessage = 1;
+                        userId = i;
+                    }
+                }
+
+                if (sendMessage == 1){
+                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                    server_response.option= 2;
+                    server_response.code = 200;
+                    server_response.servermessage = direct_message;
+
+                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                    uint8_t *server_buffer = malloc(serialized_size_server);
+                    chat__server_response__pack(&server_response, server_buffer);
+
+                    if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        perror("!error in response");
+                        exit(1);
+                    }
+
+                    free(server_buffer);
+                }
+                else{
+
+                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                    server_response.option= 2;
+                    server_response.code = 400;
+                    server_response.servermessage = "!error, user not found";
+                    server_response.servermessage = direct_message;
+
+                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                    uint8_t *server_buffer = malloc(serialized_size_server);
+                    chat__server_response__pack(&server_response, server_buffer);
+
+                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        perror("!error in response");
+                        exit(1);
+                    }
+
+                    free(server_buffer);
+                }
+                break;
+            }
+
+            case 3:{
+                break;
+            }
+
+            case 4:{
+                break;
+            }
+
+            case 5:{
+                break;
+            }
+            
+            default:{
+                fprintf(stderr, "!error invalid option %d\n", selected_option);
+                break;
+            }
+        }
+
+        chat__client_petition__free_unpacked(client_option, NULL);
+    }
+    close(client_socket);
+}
+
+
+// main method
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <PORT>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    int server_port = atoi(argv[1]);
+    int server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        perror("!error opening socket");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sockaddr_in server_address;
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = INADDR_ANY;
+    server_address.sin_port = htons(server_port);
+
+    if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
+        perror("!error on binding");
+        exit(EXIT_FAILURE);
+    }
+
+    listen(server_socket, BACKLOG);
+    printf("Server listening on port %d\n", server_port);
+
+    while (1) {
+        struct sockaddr_in client_address;
+        socklen_t client_address_len = sizeof(client_address);
+        int client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_len);
+        
+        if (client_socket < 0) {
+            perror("!error on accept client");
+            continue; // Continue to accept next connection
+        }
+
+        printf("Client connected from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
+
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, handleClient, (void *)&client_socket) != 0) {
+            perror("!error on creating thread");
+            close(client_socket); // Close the client socket if thread creation fails
+            continue; // Continue to accept next connection
+        }
+
+        pthread_detach(thread); // Detach the thread to free resources upon completion
+    }
+
+    close(server_socket); // Close the server socket when done
+    pthread_mutex_destroy(&lock); // Cleanup the mutex
     return 0;
 }
