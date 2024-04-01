@@ -23,15 +23,15 @@ Last modification: 31/03/2024
 #define BUFFER_SIZE 1024
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
 typedef struct {
     char username[100];
     char ip[100];
     int socketFD;
     int status;
     time_t activityTimer;
-} User;
+}
 
+User;
 User userList[MAX_USERS];
 int numUsers = 0;
 int clientsCount = 0; 
@@ -53,9 +53,11 @@ void addUser(char * username, char * ip, int socketFD, int status) {
     numUsers++;
 }
 
+// verify if the user is already registered
 int userExists(char * username) {
+    int i;
     pthread_mutex_lock(&lock);
-    for (int i = 0; i < numUsers; i++) {
+    for (i = 0; i < numUsers; i++) {
         if (strcmp(userList[i].username, username) == 0) {
             pthread_mutex_unlock(&lock);
             return 1;
@@ -157,7 +159,7 @@ void * handleClient(void * arg) {
                     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                     server_response.option= 1;
                     server_response.code = 200;
-                    server_response.servermessage = received_message;
+                    server_response.messagecommunication = received_message;
 
                     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
                     uint8_t *server_buffer = malloc(serialized_size_server);

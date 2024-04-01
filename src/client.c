@@ -59,7 +59,7 @@ void *serverResponse(void *arg) {
         switch (answer->option) {
             // registration response
             case 1: 
-                printf("Registration: %s\n", answer->servermessage);
+                printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 break;
 
             // message delivery confirmation
