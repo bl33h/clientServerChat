@@ -160,7 +160,6 @@ void * handleClient(void * arg) {
                 Chat__MessageCommunication *received_message = client_option->messagecommunication;
                 if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0){
                     printf("\n");
-                    Chat__MessageCommunication *received_message = client_option->messagecommunication;
 
                     for (int i = 0; i < numUsers; i++){
                         if (strcmp(userList[i].username, MyInfo.username) == 0){
@@ -194,7 +193,7 @@ void * handleClient(void * arg) {
                     int sendMessage = 0;
                     int userId = 0;
                     for (int i = 0; i < numUsers; i++){
-                        if (strcmp(userList[i].username, direct_message->recipient) == 0){
+                        if (strcmp(userList[i].username, received_message->recipient) == 0){
                             userList[i].activityTimer = time(NULL);
                             sendMessage = 1;
                             userId = i;
@@ -205,7 +204,7 @@ void * handleClient(void * arg) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                         server_response.option= 2;
                         server_response.code = 200;
-                        server_response.messagecommunication = direct_message;
+                        server_response.messagecommunication = received_message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
                         uint8_t *server_buffer = malloc(serialized_size_server);
@@ -224,7 +223,7 @@ void * handleClient(void * arg) {
                         server_response.option= 2;
                         server_response.code = 400;
                         server_response.servermessage = "!error, user not found";
-                        server_response.servermessage = direct_message;
+                        server_response.servermessage = received_message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
                         uint8_t *server_buffer = malloc(serialized_size_server);
