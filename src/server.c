@@ -171,7 +171,7 @@ void * handleClient(void * arg) {
                         }
 
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                        server_response.option= 1;
+                        server_response.option= 4;
                         server_response.code = 200;
                         server_response.messagecommunication = received_message;
 
@@ -202,7 +202,7 @@ void * handleClient(void * arg) {
 
                     if (sendMessage == 1){
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                        server_response.option= 2;
+                        server_response.option= 4;
                         server_response.code = 200;
                         server_response.messagecommunication = received_message;
 

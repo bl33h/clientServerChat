@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
     char *username = argv[1];
     char *serverIp = argv[2];
     int serverPort = atoi(argv[3]);
-    int userOption = 0;
+    int userOption = 1;
 
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket < 0) {
