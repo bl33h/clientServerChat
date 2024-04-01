@@ -55,9 +55,12 @@ void *serverResponse(void *arg) {
         }
 
         // handling server response based on the option field
-        printf("Server response option: %d\n", answer->option);
+        if (answer->option != 0){
+        	printf("Server response option: %d\n", answer->option);
+        }
         switch (answer->option) {
             // registration response
+            case 0: break;
             case 1: 
                 printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 break;
@@ -65,7 +68,7 @@ void *serverResponse(void *arg) {
             // message delivery confirmation
             case 2: 
                 if (answer->code == 200 && answer->messagecommunication) {
-                    printf("Message from %s to %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->recipient, answer->messagecommunication->message);
+                    printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 }
                 break;
             
@@ -182,7 +185,6 @@ int main(int argc, char *argv[]) {
 
                 printf("Your message: ");
                 scanf(" %[^\n]", message_content);
-                printf("\n Message from: %s to: %s: %s", message_content, "everyone", username);
 
                 Chat__MessageCommunication userMessage = CHAT__MESSAGE_COMMUNICATION__INIT;
                 userMessage.message = message_content;
@@ -207,6 +209,35 @@ int main(int argc, char *argv[]) {
                 break;
             }
             case 2:{
+                char destination[BUFFER_SIZE];
+
+                printf("Insert destinatary's username: ");
+                scanf(" %[^\n]", destination);
+                
+                char message_content[BUFFER_SIZE];
+
+                printf("Your message: ");
+                scanf(" %[^\n]", message_content);
+
+                Chat__MessageCommunication userMessage = CHAT__MESSAGE_COMMUNICATION__INIT;
+                userMessage.message = message_content;
+                userMessage.recipient = destination;
+                userMessage.sender = username;
+                Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
+                userOption_new.option = userOption;
+                userOption_new.messagecommunication = &userMessage;
+
+                size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
+                uint8_t *buffer_option = malloc(serialized_size_option);
+                chat__client_petition__pack(&userOption_new, buffer_option);
+                
+                if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
+                    perror("!error in the message");
+                    exit(1);
+                }
+
+                free(buffer_option);
+                printf("\n");
                 break;
             }
 

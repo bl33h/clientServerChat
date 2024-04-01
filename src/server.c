@@ -182,20 +182,18 @@ void * handleClient(void * arg) {
                 int userId = 0;
                 for (int i = 0; i < numUsers; i++){
                     if (strcmp(userList[i].username, direct_message->recipient) == 0){
-                        if (userList[i].status == 3){
-                            userList[i].status = 1;
-                        }
+                        printf("Paso");
                         userList[i].activityTimer = time(NULL);
                         sendMessage = 1;
                         userId = i;
-                    }
+                    }else printf("No paso para %s", userList[i].username);
                 }
 
                 if (sendMessage == 1){
                     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                     server_response.option= 2;
                     server_response.code = 200;
-                    server_response.servermessage = direct_message;
+                    server_response.messagecommunication = direct_message;
 
                     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
                     uint8_t *server_buffer = malloc(serialized_size_server);
