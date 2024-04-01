@@ -60,28 +60,32 @@ void *serverResponse(void *arg) {
         }
         switch (answer->option) {
             // registration response
-            case 0: break;
-            case 1: 
-                printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
-                break;
-
-            // message delivery confirmation
+            case 1: break;
+            // connected users list
             case 2: 
-                if (answer->code == 200 && answer->messagecommunication) {
-                    printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                break;
+            //status
+            case 3:
+                break;
+            //mesage
+            case 4: 
+                if (strcmp(answer->recipient, "everyone") == 0 || strcmp(answer->recipient, "") == 0) {
+                    printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                } else {
+                    if (answer->code == 200 && answer->messagecommunication) {
+                        printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                    }
                 }
                 break;
             
-            // connected users list
-            case 3: 
-                break;
-            
-            // user info
-            case 4: 
-                break;
-            
-            // exit confirmation
+            // info específica
             case 5: 
+                break;
+            //help
+            case 6:
+                break;
+            // exit
+            case 7:
                 break;
             default:
                 printf("Unknown option received from server.\n");
@@ -192,7 +196,7 @@ int main(int argc, char *argv[]) {
                 userMessage.sender = username;
 
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
-                userOption_new.option = userOption;
+                userOption_new.option = 4;
                 userOption_new.messagecommunication = &userMessage;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
@@ -224,7 +228,7 @@ int main(int argc, char *argv[]) {
                 userMessage.recipient = destination;
                 userMessage.sender = username;
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
-                userOption_new.option = userOption;
+                userOption_new.option = 4;
                 userOption_new.messagecommunication = &userMessage;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);

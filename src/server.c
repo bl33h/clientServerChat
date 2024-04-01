@@ -144,87 +144,11 @@ void * handleClient(void * arg) {
 
         switch (selected_option){
             case 1:{
-                printf("\n");
-                Chat__MessageCommunication *received_message = client_option->messagecommunication;
-
-                for (int i = 0; i < numUsers; i++){
-                    if (strcmp(userList[i].username, MyInfo.username) == 0){
-                        if (userList[i].status == 3){
-                            userList[i].status = 1;
-                        }
-                        userList[i].activityTimer = time(NULL);
-                        continue;
-                    }
-
-                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                    server_response.option= 1;
-                    server_response.code = 200;
-                    server_response.messagecommunication = received_message;
-
-                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                    uint8_t *server_buffer = malloc(serialized_size_server);
-                    chat__server_response__pack(&server_response, server_buffer);
-
-                    if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0){
-                        perror("!error in response");
-                        exit(1);
-                    }
-
-                    free(server_buffer);
-                }
+                
                 break;
             }
             case 2:{
-                printf("\n");
-                Chat__MessageCommunication *direct_message = client_option->messagecommunication;
-
-                int sendMessage = 0;
-                int userId = 0;
-                for (int i = 0; i < numUsers; i++){
-                    if (strcmp(userList[i].username, direct_message->recipient) == 0){
-                        printf("Paso");
-                        userList[i].activityTimer = time(NULL);
-                        sendMessage = 1;
-                        userId = i;
-                    }else printf("No paso para %s", userList[i].username);
-                }
-
-                if (sendMessage == 1){
-                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                    server_response.option= 2;
-                    server_response.code = 200;
-                    server_response.messagecommunication = direct_message;
-
-                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                    uint8_t *server_buffer = malloc(serialized_size_server);
-                    chat__server_response__pack(&server_response, server_buffer);
-
-                    if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0){
-                        perror("!error in response");
-                        exit(1);
-                    }
-
-                    free(server_buffer);
-                }
-                else{
-
-                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                    server_response.option= 2;
-                    server_response.code = 400;
-                    server_response.servermessage = "!error, user not found";
-                    server_response.servermessage = direct_message;
-
-                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                    uint8_t *server_buffer = malloc(serialized_size_server);
-                    chat__server_response__pack(&server_response, server_buffer);
-
-                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
-                        perror("!error in response");
-                        exit(1);
-                    }
-
-                    free(server_buffer);
-                }
+                
                 break;
             }
 
@@ -233,7 +157,87 @@ void * handleClient(void * arg) {
             }
 
             case 4:{
-                break;
+                Chat__MessageCommunication *received_message = client_option->messagecommunication;
+                if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0){
+                    printf("\n");
+                    Chat__MessageCommunication *received_message = client_option->messagecommunication;
+
+                    for (int i = 0; i < numUsers; i++){
+                        if (strcmp(userList[i].username, MyInfo.username) == 0){
+                            if (userList[i].status == 3){
+                                userList[i].status = 1;
+                            }
+                            userList[i].activityTimer = time(NULL);
+                            continue;
+                        }
+
+                        Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                        server_response.option= 1;
+                        server_response.code = 200;
+                        server_response.messagecommunication = received_message;
+
+                        size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        chat__server_response__pack(&server_response, server_buffer);
+
+                        if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                            perror("!error in response");
+                            exit(1);
+                        }
+
+                        free(server_buffer);
+                    }
+                }
+                else{
+                    printf("\n");
+
+                    int sendMessage = 0;
+                    int userId = 0;
+                    for (int i = 0; i < numUsers; i++){
+                        if (strcmp(userList[i].username, direct_message->recipient) == 0){
+                            userList[i].activityTimer = time(NULL);
+                            sendMessage = 1;
+                            userId = i;
+                        }
+                    }
+
+                    if (sendMessage == 1){
+                        Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                        server_response.option= 2;
+                        server_response.code = 200;
+                        server_response.messagecommunication = direct_message;
+
+                        size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        chat__server_response__pack(&server_response, server_buffer);
+
+                        if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                            perror("!error in response");
+                            exit(1);
+                        }
+
+                        free(server_buffer);
+                    }
+                    else{
+
+                        Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                        server_response.option= 2;
+                        server_response.code = 400;
+                        server_response.servermessage = "!error, user not found";
+                        server_response.servermessage = direct_message;
+
+                        size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        chat__server_response__pack(&server_response, server_buffer);
+
+                        if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                            perror("!error in response");
+                            exit(1);
+                        }
+
+                        free(server_buffer);
+                    }
+                }
             }
 
             case 5:{
