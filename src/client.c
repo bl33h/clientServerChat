@@ -69,7 +69,7 @@ void *serverResponse(void *arg) {
                 break;
             //mesage
             case 4: 
-                if (strcmp(answer->recipient, "everyone") == 0 || strcmp(answer->recipient, "") == 0) {
+                if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
                     printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 } else {
                     if (answer->code == 200 && answer->messagecommunication) {
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 
                 Chat__MessageCommunication userMessage = CHAT__MESSAGE_COMMUNICATION__INIT;
                 userMessage.message = message_content;
-                userMessage.recipient = "";
+                userMessage.recipient = "everyone";
                 userMessage.sender = username;
 
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
