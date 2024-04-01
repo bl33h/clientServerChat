@@ -15,14 +15,40 @@ Last modification: 31/03/2024
 #include <stdlib.h>
 #include <stdio.h>
 
-#define SERVER_IP "127.0.0.1" // Adjust as necessary
+// --- variables ---
+#define SERVER_IP "127.0.0.1"
 #define SERVER_PORT 8080
 #define MAX_BUF_SIZE 1024
 
+// --- options ---
+#define opSignIn 1
+#define opConnectedUsers 2
+#define opStatus 3
+#define opChat 4
+#define opUserInfo 5
+#define opExit 6
+
+// username pointer
+char *username;
+
+// other features
+int state;
+int clientSocket;
+char connectedUsers;
+char input[BUFFER_SIZE];
+char userInfo[BUFFER_SIZE];
+char content[BUFFER_SIZE];
+char destination[BUFFER_SIZE];
+
+// ------- methods -------
 void print_menu() {
-    printf("\n--- Menu ---\n");
-    printf("1. Send message\n");
-    printf("2. Exit\n");
+    printf("\n--- Available options ---\n");
+    printf("1. SignIn (choose your username)\n");
+    printf("2. View connected users \n");
+    printf("3. Change status\n");
+    printf("4. Chat \n");
+    printf("5. User info\n");
+    printf("6. Exit\n");
 }
 
 void send_message(int sock) {
@@ -30,20 +56,19 @@ void send_message(int sock) {
     printf("Enter your message: ");
     fgets(message_content, MAX_BUF_SIZE, stdin);
 
-    // Prepare the message
     Chat__MessageCommunication msg = CHAT__MESSAGE_COMMUNICATION__INIT;
-    char sender[] = "YourUsername"; // Example username, replace as necessary
-    char recipient[] = "everyone"; // or specify a recipient username
+    char sender[] = "YourUsername";
+    char recipient[] = "everyone";
     msg.sender = sender;
     msg.recipient = recipient;
     msg.message = message_content;
 
-    // Serialize the message
+    // serialize the message
     unsigned len = chat__message_communication__get_packed_size(&msg);
     uint8_t *buf = malloc(len);
     chat__message_communication__pack(&msg, buf);
 
-    // Send the message
+    // send the message
     send(sock, buf, len, 0);
 
     free(buf);
@@ -53,7 +78,7 @@ int main() {
     int sock;
     struct sockaddr_in serv_addr;
 
-    // Create socket
+    // create socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("Socket creation error");
         return -1;
@@ -62,13 +87,13 @@ int main() {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(SERVER_PORT);
 
-    // Convert IPv4 and IPv6 addresses from text to binary form
+    // ip convertion
     if(inet_pton(AF_INET, SERVER_IP, &serv_addr.sin_addr)<=0) {
         printf("\nInvalid address/Address not supported\n");
         return -1;
     }
 
-    // Connect to server
+    // server connection
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Connection Failed");
         return -1;
@@ -76,14 +101,16 @@ int main() {
 
     printf("Connected to the server.\n");
 
-    // Main loop
+    // main loop
     int running = 1;
     while (running) {
         print_menu();
         printf("Select an option: ");
         int option;
         scanf("%d", &option);
-        getchar(); // consume newline
+
+        // consume newline
+        getchar(); 
 
         switch (option) {
             case 1:
