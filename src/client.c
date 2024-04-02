@@ -50,27 +50,18 @@ void helpCenter() {
 }
 
 // function to get the user status
-char* userStatus(int status_value){
-    char* response = malloc(sizeof(char) * 40);
-    switch(status_value){
-        case 1:{
-            strcpy(response, "ACTIVE");
-            break;
-        }
-        case 2:{
-            strcpy(response, "INACTIVE");
-            break;
-        }
-        case 3:{
-            strcpy(response, "BUSY");
-            break;
-        }
-        default:
-            break;
+char* userStatus(char* status_value){
+    if (strcmp(status_value, "ACTIVE") == 0) {
+        return "ACTIVE";
+    } else if (strcmp(status_value, "INACTIVE") == 0) {
+        return "INACTIVE";
+    } else if (strcmp(status_value, "BUSY") == 0) {
+        return "BUSY";
+    } else {
+        return "UNKNOWN";
     }
-
-    return response;
 }
+
 
 // function to handle the server response
 void *serverResponse(void *arg) {
@@ -109,7 +100,7 @@ void *serverResponse(void *arg) {
                 for (int i = 0; i < users_response -> n_connectedusers; i++){
                     Chat__UserInfo *user = users_response -> connectedusers[i];
                     char status[40];
-                    strcpy(status, userStatus(user -> status));
+                    strcpy(status, userStatus(user->status));
                     printf("\n>User %s is [status]: %s \n", user -> username, status);
                 }
                 break;
@@ -204,7 +195,7 @@ int main(int argc, char *argv[]) {
     }
 
     while (userOption != 5) {
-         menu();
+        menu();
         scanf("%d", &userOption);
         switch (userOption){
             case 1:{
