@@ -337,13 +337,13 @@ void * handleClient(void * arg) {
             case 5:{
                 Chat__UserRequest *user_request_response = client_option->users;
                 
-                Chat__UserInfo *user_info_request = CHAT__USER_INFO__INIT;
+                Chat__UserInfo user_info_request = CHAT__USER_INFO__INIT;
 
                 for (int i = 0; i < numUsers; i++) {
                     if (strcmp(userList[i].username, user_request_response->user) == 0) {
-                        user_info_request->username = strdup(userList[i].username);
-                        user_info_request->status = strdup(convertStatusToString(userList[i].status));
-                        user_info_request->ip = strdup(userList[i].ip);
+                        user_info_request.username = strdup(userList[i].username);
+                        user_info_request.status = strdup(convertStatusToString(userList[i].status));
+                        user_info_request.ip = strdup(userList[i].ip);
                         break;
                     }
                 }
