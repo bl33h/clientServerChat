@@ -83,7 +83,7 @@ void *serverResponse(void *arg) {
 
         // handling server response based on the option field
         if (answer->option != 0){
-        	printf("Server response option: %d\n", answer->option);
+            printf("\n");
         }
         switch (answer->option) {
 
@@ -106,7 +106,7 @@ void *serverResponse(void *arg) {
                 break;
                 }
 
-            //status
+            // change status
             case 3:
                 break;
 
@@ -194,10 +194,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    while (userOption != 5) {
+    while (userOption != 7) {
         menu();
         scanf("%d", &userOption);
         switch (userOption){
+
+            // send a message to everyone
             case 1:{
                 char message_content[BUFFER_SIZE];
 
@@ -226,6 +228,8 @@ int main(int argc, char *argv[]) {
                 printf("\n");
                 break;
             }
+
+            // send a direct message
             case 2:{
                 char destination[BUFFER_SIZE];
 
@@ -259,6 +263,7 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
+            // view connected users
             case 3:{
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
                 userOption_new.option = 2;
@@ -275,47 +280,52 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
+            // see user information
             case 4:{
                 break;
             }
 
             // change status
             case 5:{
-                // int status;
-                // printf("1. Active\n");
-                // printf("2. Inactive\n");
-                // printf("3. Busy\n");
-                // printf("Select a status: ");
-                // scanf("%d", &status);
-                
-                // printf("Scan\n");
+                int statusOption;
 
-                // Chat__ChangeStatus userStatus = CHAT__CHANGE_STATUS__INIT;
-                // userStatus.username = username;
-                // userStatus.status = status;
-                
-                // printf("Crea status\n");
+                // status menu
+                printf("\n--- Choose your status ---\n");
+                printf(">Note: This will be visible to other users\n");
+                printf("1. ACTIVE\n");
+                printf("2. INACTIVE\n");
+                printf("3. BUSY\n");
+                printf(">Option: ");
+                scanf(" %d", &statusOption);
 
-                // Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
-                // userOption_new.option = 3;
-                // userOption_new.change = &userStatus;
-                // printf("Crea petition \n");
+                const char *statusStr = NULL;
+                switch (statusOption) {
+                    case 1: statusStr = "ACTIVE"; break;
+                    case 2: statusStr = "INACTIVE"; break;
+                    case 3: statusStr = "BUSY"; break;
+                    default: printf("Invalid status option.\n"); continue;
+                }
 
-                // size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
-                // printf("Serialize\n");
-                // uint8_t *buffer_option = malloc(serialized_size_option);
-                // printf("Buffer\n");
-                // chat__client_petition__pack(&userOption_new, buffer_option);
-                // printf("Pack de petition\n");
+                Chat__ChangeStatus user_status = CHAT__CHANGE_STATUS__INIT;
+                user_status.username = username;
+                user_status.status = strdup(statusStr);
 
-                // if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
-                //     perror("!error in the message");
-                //     exit(1);
-                // }
-                // printf("Paso el socket\n");
+                Chat__ClientPetition user_option_new = CHAT__CLIENT_PETITION__INIT;
+                user_option_new.option = 3;
+                user_option_new.change = &user_status;
 
-                // free(buffer_option);
-                // printf("\n");
+                size_t serialized_size_option = chat__client_petition__get_packed_size(&user_option_new);
+                uint8_t *buffer_option = malloc(serialized_size_option);
+                chat__client_petition__pack(&user_option_new, buffer_option);
+
+                if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
+                    perror("!error, unable to change status");
+                    exit(1);
+                }
+
+                free(buffer_option);
+                free(user_status.status);
+                printf("\n>You just changed your status to: [%s]\n", statusStr);
                 break;
             }
 
@@ -325,7 +335,6 @@ int main(int argc, char *argv[]) {
             }
 
             case 7:{
-                userOption = 5;
                 break;
             }
 

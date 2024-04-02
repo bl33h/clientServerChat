@@ -210,55 +210,46 @@ void * handleClient(void * arg) {
 
             // change status
             case 3:{
-                // Chat__ChangeStatus *status_change = client_option->change;
-                // int user_found = 0;
-                // for (int i = 0; i < numUsers; i++){
-                //     if (strcmp(userList[i].username, status_change->username) == 0){
-                //         userList[i].status = status_change->status;
-                //         user_found = 1;
-                //         break;
-                //     }
-                // }
+                Chat__ChangeStatus *status_change = client_option->change;
+                for (int i = 0; i < numUsers; i++) {
+                    if (strcmp(userList[i].username, status_change->username) == 0) {
 
-                // if (user_found == 1){
-                //     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                //     server_response.option = 3;
-                //     server_response.code = 200;
-                //     server_response.change = status_change;
+                        // update the user's status based on the received string
+                        if (strcmp(status_change->status, "ACTIVE") == 0) {
+                            userList[i].status = 1;
+                        } else if (strcmp(status_change->status, "INACTIVE") == 0) {
+                            userList[i].status = 2;
+                        } else if (strcmp(status_change->status, "BUSY") == 0) {
+                            userList[i].status = 3;
+                        } else {
 
-                //     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                //     uint8_t *server_buffer = malloc(serialized_size_server);
-                //     chat__server_response__pack(&server_response, server_buffer);
+                            // handle unexpected status string
+                            printf("Received unexpected status string: %s\n", status_change->status);
+                        }
 
-                //     if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
-                //         perror("!error in response");
-                //         exit(1);
-                //     }
+                        userList[i].activityTimer = time(NULL);
 
-                //     free(server_buffer);
-                // }
-                // else{
-                //     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                //     server_response.option = 3;
-                //     server_response.code = 400;
-                //     server_response.servermessage = "!error, user not found";
-                //     server_response.change = status_change;
+                        // prepare and send a server response to confirm the status change
+                        Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                        server_response.option = 3;
+                        server_response.code = 200;
 
-                //     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                //     uint8_t *server_buffer = malloc(serialized_size_server);
-                //     chat__server_response__pack(&server_response, server_buffer);
+                        size_t response_size = chat__server_response__get_packed_size(&server_response);
+                        uint8_t *response_buf = malloc(response_size);
+                        chat__server_response__pack(&server_response, response_buf);
 
-                //     if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
-                //         perror("!error in response");
-                //         exit(1);
-                //     }
+                        if (send(MyInfo.socketFD, response_buf, response_size, 0) < 0) {
+                            perror("Failed to send status change confirmation");
+                        }
 
-                //     free(server_buffer);
-                // }
+                        free(response_buf);
+
+                        break;
+                    }
+                }
                 break;
             }
 
-            // send message
             case 4:{
                 Chat__MessageCommunication *received_message = client_option->messagecommunication;
                 if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0){
