@@ -269,6 +269,10 @@ int main(int argc, char *argv[]) {
                 break;
 
             }
+
+            case 6:{
+                helpCenter();
+            }
             default:
                 break;
         }
