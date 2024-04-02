@@ -80,11 +80,6 @@ void *serverResponse(void *arg) {
             printf("!error during the unpacking process\n");
             continue;
         }
-
-        // handling server response based on the option field
-        if (answer->option != 0){
-            printf("\n");
-        }
         switch (answer->option) {
 
             // registration response
@@ -112,24 +107,25 @@ void *serverResponse(void *arg) {
 
             //mesage
             case 4: 
-                if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
+                {if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
                     printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 } else {
                     if (answer->code == 200 && answer->messagecommunication) {
                         printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                     }
-                }
+                }}
                 break;
             
             // user info
             case 5: 
-                if (answer->code == 200 && answer->userinforesponse) {
+                {if (answer->code == 200 && answer->userinforesponse) {
                         char status[40];
+                        printf("\n--- User information ---\n");
                         strcpy(status, userStatus(answer->userinforesponse->status));
                         printf("\n> User: %s\n", answer->userinforesponse->username);
                         printf("> Status: %s\n", status);
                         printf("> IP: %s\n", answer->userinforesponse->ip);
-                }
+                }}
                 break;
 
             default:
@@ -313,7 +309,6 @@ int main(int argc, char *argv[]) {
 
 
                 free(buffer_option);
-                free(user_info_request.user);
                 break;
             }
 
