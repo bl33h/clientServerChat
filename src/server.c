@@ -333,8 +333,35 @@ void * handleClient(void * arg) {
                 }
             }
 
-            // exit
+            // user info
             case 5:{
+                Chat__UserRequest *user_request_response = client_option->users;
+                
+                Chat__UserInfo *user_info_request = CHAT__USER_INFO__INIT;
+
+                for (int i = 0; i < numUsers; i++) {
+                    if (strcmp(userList[i].username, user_request_response->user) == 0) {
+                        user_info_request->username = strdup(userList[i].username);
+                        user_info_request->status = strdup(convertStatusToString(userList[i].status));
+                        user_info_request->ip = strdup(userList[i].ip);
+                        break;
+                    }
+                }
+
+                Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                server_response.option = 5;
+                server_response.code = 200;
+                server_response.userinforesponse = &user_info_request;
+
+                size_t serialized_size = chat__server_response__get_packed_size(&server_response);
+                uint8_t *buffer = malloc(serialized_size);
+                chat__server_response__pack(&server_response, buffer);
+
+                if (send(MyInfo.socketFD, buffer, serialized_size, 0) < 0) {
+                    perror("!error in sending user info");
+                }
+
+                free(buffer);
                 break;
             }
             
