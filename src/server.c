@@ -4,18 +4,18 @@ Copyright (C), 2024-2025, bl33h & Mendezg1
 FileName: server.c
 @version: I
 Creation: 19/03/2024
-Last modification: 31/03/2024
+Last modification: 02/04/2024
 ------------------------------------------------------------------------------*/
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h>
-#include <pthread.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include "chat.pb-c.h"
+#include <pthread.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <netdb.h>
 
 // --- variables ---
 #define BACKLOG 10
@@ -23,6 +23,8 @@ Last modification: 31/03/2024
 #define BUFFER_SIZE 1024
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+// --- proto structure ---
 typedef struct {
     char username[100];
     char ip[100];
@@ -31,6 +33,7 @@ typedef struct {
     time_t activityTimer;
 }
 
+// --- user structure ---
 User;
 User userList[MAX_USERS];
 int numUsers = 0;
@@ -38,9 +41,10 @@ int clientsCount = 0;
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// add a new user to the list
 void addUser(char * username, char * ip, int socketFD, int status) {
     if (numUsers >= MAX_USERS) {
-        printf("SERVER AT FULL CAPACITY. UNABLE TO ADD NEW USERS.\n");
+        printf("!SERVER AT FULL CAPACITY. COME BACK LATER\n");
         return;
     }
     User newUser;
@@ -67,8 +71,21 @@ int userExists(char * username) {
     return 0;
 }
 
-// function to handle the clients requests
+// status of the user
+const char* convertStatusToString(int status) {
+    switch (status) {
+        case 1:
+            return "ACTIVE";
+        case 2:
+            return "INACTIVE";
+        case 3:
+            return "BUSY";
+        default:
+            return "UNKNOWN";
+    }
+}
 
+// function to handle the clients requests
 void * handleClient(void * arg) {
     int client_socket = *(int *) arg;
     uint8_t recv_buffer[BUFFER_SIZE];
@@ -78,16 +95,15 @@ void * handleClient(void * arg) {
         exit(1);
     }
 
-    printf("Antes del petition.");
     Chat__ClientPetition *user_registration = chat__client_petition__unpack(NULL, recv_size, recv_buffer);
     if (user_registration == NULL) {
         fprintf(stderr, "!error, unable to unpack message\n");
         exit(1);
     }
-    printf("Despues del petition.");
+
     Chat__UserRegistration *chat_registration = user_registration->registration;
 
-    printf("\n > connected >user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
+    printf("\n >connected >>user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
 
     User MyInfo;
     strcpy(MyInfo.username, chat_registration->username);
@@ -118,7 +134,7 @@ void * handleClient(void * arg) {
     free(server_buffer_registro);
     chat__client_petition__free_unpacked(user_registration, NULL);
 
-    printf("\n\n --- Menu --- ([%s])\n", MyInfo.username);
+    printf("\n\n [%s] ---> at the menu\n", MyInfo.username);
     while (1) {
 
         printf("\n");
@@ -142,99 +158,107 @@ void * handleClient(void * arg) {
         }
 
         int selected_option = client_option -> option;
-        printf("[%s] --- Available options --- [%d]", MyInfo.username, selected_option);
+         printf("[%s] ---> Using option ---> [%d]", MyInfo.username, selected_option);
 
         switch (selected_option){
+
+            // user registration, its already handled
             case 1:{
                 
                 break;
             }
+
+            // connected users list
             case 2:{
                 Chat__ConnectedUsersResponse connected_users_response = CHAT__CONNECTED_USERS_RESPONSE__INIT;
                 connected_users_response.n_connectedusers = numUsers;
-
                 connected_users_response.connectedusers = malloc(sizeof(Chat__UserInfo *) * numUsers);
-                if (connected_users_response.connectedusers == NULL) {
-                    perror("Error: No se pudo asignar memoria para connectedusers.");
-                }
 
                 for (int i = 0; i < numUsers; i++) {
-                    Chat__UserInfo user_info = CHAT__USER_INFO__INIT;
-                    user_info.username = userList[i].username;
-                    user_info.ip = userList[i].ip;
-                    user_info.status = userList[i].status;
-                    connected_users_response.connectedusers[i] = &user_info;
+                    Chat__UserInfo *user_info = malloc(sizeof(Chat__UserInfo));
+                    chat__user_info__init(user_info);
+                    user_info->username = strdup(userList[i].username);
+                    user_info->status = strdup(convertStatusToString(userList[i].status));
+                    user_info->ip = strdup(userList[i].ip);
+                    connected_users_response.connectedusers[i] = user_info;
                 }
 
-                size_t serialized_size_connected_users = chat__connected_users_response__get_packed_size(&connected_users_response);
-                uint8_t *buffer_connected_users = malloc(serialized_size_connected_users);
-                if (buffer_connected_users == NULL) {
-                    perror("Error: No se pudo asignar memoria para el buffer_connected_users.");
+                Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                server_response.option = 2;
+                server_response.code = 200;
+                server_response.connectedusers = &connected_users_response;
+
+                size_t serialized_size = chat__server_response__get_packed_size(&server_response);
+                uint8_t *buffer = malloc(serialized_size);
+                chat__server_response__pack(&server_response, buffer);
+
+                if (send(MyInfo.socketFD, buffer, serialized_size, 0) < 0) {
+                    perror("!error in sending connected users list");
                 }
 
-                chat__connected_users_response__pack(&connected_users_response, buffer_connected_users);
-
-                if (send(MyInfo.socketFD, buffer_connected_users, serialized_size_connected_users, 0) < 0) {
-                    perror("Error: No se pudo enviar la lista de usuarios conectados al cliente.");
-                }
-
-                free(buffer_connected_users);
+                // rfee allocated memory
+                free(buffer);
                 for (int i = 0; i < numUsers; i++) {
+                    free(connected_users_response.connectedusers[i]->username);
+                    free(connected_users_response.connectedusers[i]->status);
+                    free(connected_users_response.connectedusers[i]->ip);
                     free(connected_users_response.connectedusers[i]);
                 }
                 free(connected_users_response.connectedusers);
                 break;
             }
 
+            // change status
             case 3:{
-                Chat__ChangeStatus *status_change = client_option->change;
-                int user_found = 0;
-                for (int i = 0; i < numUsers; i++){
-                    if (strcmp(userList[i].username, status_change->username) == 0){
-                        userList[i].status = status_change->status;
-                        user_found = 1;
-                        break;
-                    }
-                }
+                // Chat__ChangeStatus *status_change = client_option->change;
+                // int user_found = 0;
+                // for (int i = 0; i < numUsers; i++){
+                //     if (strcmp(userList[i].username, status_change->username) == 0){
+                //         userList[i].status = status_change->status;
+                //         user_found = 1;
+                //         break;
+                //     }
+                // }
 
-                if (user_found == 1){
-                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                    server_response.option = 3;
-                    server_response.code = 200;
-                    server_response.change = status_change;
+                // if (user_found == 1){
+                //     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                //     server_response.option = 3;
+                //     server_response.code = 200;
+                //     server_response.change = status_change;
 
-                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                    uint8_t *server_buffer = malloc(serialized_size_server);
-                    chat__server_response__pack(&server_response, server_buffer);
+                //     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                //     uint8_t *server_buffer = malloc(serialized_size_server);
+                //     chat__server_response__pack(&server_response, server_buffer);
 
-                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
-                        perror("!error in response");
-                        exit(1);
-                    }
+                //     if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                //         perror("!error in response");
+                //         exit(1);
+                //     }
 
-                    free(server_buffer);
-                }
-                else{
-                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                    server_response.option = 3;
-                    server_response.code = 400;
-                    server_response.servermessage = "!error, user not found";
-                    server_response.change = status_change;
+                //     free(server_buffer);
+                // }
+                // else{
+                //     Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                //     server_response.option = 3;
+                //     server_response.code = 400;
+                //     server_response.servermessage = "!error, user not found";
+                //     server_response.change = status_change;
 
-                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                    uint8_t *server_buffer = malloc(serialized_size_server);
-                    chat__server_response__pack(&server_response, server_buffer);
+                //     size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                //     uint8_t *server_buffer = malloc(serialized_size_server);
+                //     chat__server_response__pack(&server_response, server_buffer);
 
-                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
-                        perror("!error in response");
-                        exit(1);
-                    }
+                //     if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                //         perror("!error in response");
+                //         exit(1);
+                //     }
 
-                    free(server_buffer);
-                }
+                //     free(server_buffer);
+                // }
                 break;
             }
 
+            // send message
             case 4:{
                 Chat__MessageCommunication *received_message = client_option->messagecommunication;
                 if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0){
@@ -318,6 +342,7 @@ void * handleClient(void * arg) {
                 }
             }
 
+            // exit
             case 5:{
                 break;
             }
@@ -337,7 +362,7 @@ void * handleClient(void * arg) {
 // main method
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s <PORT>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -360,7 +385,7 @@ int main(int argc, char **argv) {
     }
 
     listen(server_socket, BACKLOG);
-    printf("Server listening on port %d\n", server_port);
+    printf("Server listening on port [%d]\n", server_port);
 
     while (1) {
         struct sockaddr_in client_address;
@@ -369,7 +394,9 @@ int main(int argc, char **argv) {
         
         if (client_socket < 0) {
             perror("!error on accept client");
-            continue; // Continue to accept next connection
+
+            // continue to accept next connection
+            continue; 
         }
 
         printf("Client connected from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
@@ -377,14 +404,22 @@ int main(int argc, char **argv) {
         pthread_t thread;
         if (pthread_create(&thread, NULL, handleClient, (void *)&client_socket) != 0) {
             perror("!error on creating thread");
-            close(client_socket); // Close the client socket if thread creation fails
-            continue; // Continue to accept next connection
+
+            // close the client socket if thread creation fails
+            close(client_socket); 
+
+            // continue to accept next connection
+            continue;
         }
 
-        pthread_detach(thread); // Detach the thread to free resources upon completion
+        // detach the thread to free resources upon completion
+        pthread_detach(thread); 
     }
 
-    close(server_socket); // Close the server socket when done
-    pthread_mutex_destroy(&lock); // Cleanup the mutex
+    // close the server socket when done
+    close(server_socket); 
+
+    // cleanup the mutex
+    pthread_mutex_destroy(&lock); 
     return 0;
 }

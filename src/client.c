@@ -4,7 +4,7 @@ Copyright (C), 2024-2025, bl33h & Mendezg1
 FileName: client.c
 @version: I
 Creation: 19/03/2024
-Last modification: 31/03/2024
+Last modification: 02/04/2024
 ------------------------------------------------------------------------------*/
 #include <sys/socket.h>
 #include <netinet/in.h> 
@@ -49,75 +49,6 @@ void helpCenter() {
     printf("7. Here you will exit the chat\n");
 }
 
-// function to handle the server response
-void *serverResponse(void *arg) {
-    int socket = *(int *)arg;
-    uint8_t buffer_rx[BUFFER_SIZE];
-    ssize_t bytesR;
-
-    while (1) {
-    	printf("Justo antes socket\n");
-        bytesR = recv(socket, buffer_rx, BUFFER_SIZE, 0);
-        printf("Luego socket\n");
-        if (bytesR < 0) {
-            printf("!error failed response\n");
-            continue;
-        }
-        printf("Justo antes answer\n");
-        Chat__ServerResponse *answer = chat__server_response__unpack(NULL, bytesR, buffer_rx);
-        if (answer == NULL) {
-            printf("!error during the unpacking process\n");
-            continue;
-        }
-
-        // handling server response based on the option field
-        if (answer->option != 0){
-        	printf("Server response option: %d\n", answer->option);
-        }
-        switch (answer->option) {
-            // registration response
-            case 1: break;
-            // connected users list
-            case 2: 
-                printf("Connected users:\n");
-                for (size_t i = 0; i < answer->connectedusers->n_connectedusers; i++) {
-                    Chat__UserInfo *connected_user = answer->connectedusers->connectedusers[i];
-                    
-                    printf("Username: %s\n", connected_user->username);
-                    printf("\n");
-                }
-                break;
-            //status
-            case 3:
-                printf("Si era");
-                break;
-            //mesage
-            case 4: 
-                if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
-                    printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
-                } else {
-                    if (answer->code == 200 && answer->messagecommunication) {
-                        printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
-                    }
-                }
-                break;
-            
-            // info especÃ­fica
-            case 5: 
-                break;
-            default:
-                printf("Unknown option received from server.\n");
-                break;
-        }
-
-        chat__server_response__free_unpacked(answer, NULL);
-    }
-
-    return NULL;
-}
-
-
-
 // function to get the user status
 char* userStatus(int status_value){
     char* response = malloc(sizeof(char) * 40);
@@ -139,6 +70,78 @@ char* userStatus(int status_value){
     }
 
     return response;
+}
+
+// function to handle the server response
+void *serverResponse(void *arg) {
+    int socket = *(int *)arg;
+    uint8_t buffer_rx[BUFFER_SIZE];
+    ssize_t bytesR;
+
+    while (1) {
+        bytesR = recv(socket, buffer_rx, BUFFER_SIZE, 0);
+        if (bytesR < 0) {
+            printf("!error failed response\n");
+            continue;
+        }
+        Chat__ServerResponse *answer = chat__server_response__unpack(NULL, bytesR, buffer_rx);
+        if (answer == NULL) {
+            printf("!error during the unpacking process\n");
+            continue;
+        }
+
+        // handling server response based on the option field
+        if (answer->option != 0){
+        	printf("Server response option: %d\n", answer->option);
+        }
+        switch (answer->option) {
+
+            // registration response
+            case 1: 
+                break;
+
+            // connected users list
+            case 2: { 
+                printf("\n |--- Connected users ---| \n");
+
+                Chat__ConnectedUsersResponse *users_response = answer -> connectedusers;
+
+                for (int i = 0; i < users_response -> n_connectedusers; i++){
+                    Chat__UserInfo *user = users_response -> connectedusers[i];
+                    char status[40];
+                    strcpy(status, userStatus(user -> status));
+                    printf("\n>User %s is [status]: %s \n", user -> username, status);
+                }
+                break;
+                }
+
+            //status
+            case 3:
+                break;
+
+            //mesage
+            case 4: 
+                if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
+                    printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                } else {
+                    if (answer->code == 200 && answer->messagecommunication) {
+                        printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                    }
+                }
+                break;
+            
+            // user info
+            case 5: 
+                break;
+
+            default:
+                break;
+        }
+
+        chat__server_response__free_unpacked(answer, NULL);
+    }
+
+    return NULL;
 }
 
 // main function
@@ -207,7 +210,7 @@ int main(int argc, char *argv[]) {
             case 1:{
                 char message_content[BUFFER_SIZE];
 
-                printf("Your message: ");
+                printf("> Your message: ");
                 scanf(" %[^\n]", message_content);
 
                 Chat__MessageCommunication userMessage = CHAT__MESSAGE_COMMUNICATION__INIT;
@@ -268,19 +271,16 @@ int main(int argc, char *argv[]) {
             case 3:{
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
                 userOption_new.option = 2;
-                userOption_new.registration = &registration;
-                
+
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
                 uint8_t *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&userOption_new, buffer_option);
                 
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
-                    perror("!error in the message");
-                    exit(1);
+                    perror("!error in the clients list");
                 }
 
                 free(buffer_option);
-                printf("\n");
                 break;
             }
 
@@ -288,42 +288,43 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
-            case 5:{// change status
-                int status;
-                printf("1. Active\n");
-                printf("2. Inactive\n");
-                printf("3. Busy\n");
-                printf("Select a status: ");
-                scanf("%d", &status);
+            // change status
+            case 5:{
+                // int status;
+                // printf("1. Active\n");
+                // printf("2. Inactive\n");
+                // printf("3. Busy\n");
+                // printf("Select a status: ");
+                // scanf("%d", &status);
                 
-                printf("Scan\n");
+                // printf("Scan\n");
 
-                Chat__ChangeStatus userStatus = CHAT__CHANGE_STATUS__INIT;
-                userStatus.username = username;
-                userStatus.status = status;
+                // Chat__ChangeStatus userStatus = CHAT__CHANGE_STATUS__INIT;
+                // userStatus.username = username;
+                // userStatus.status = status;
                 
-                printf("Crea status\n");
+                // printf("Crea status\n");
 
-                Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
-                userOption_new.option = 3;
-                userOption_new.change = &userStatus;
-                printf("Crea petition \n");
+                // Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
+                // userOption_new.option = 3;
+                // userOption_new.change = &userStatus;
+                // printf("Crea petition \n");
 
-                size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
-                printf("Serialize\n");
-                uint8_t *buffer_option = malloc(serialized_size_option);
-                printf("Buffer\n");
-                chat__client_petition__pack(&userOption_new, buffer_option);
-                printf("Pack de petition\n");
+                // size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
+                // printf("Serialize\n");
+                // uint8_t *buffer_option = malloc(serialized_size_option);
+                // printf("Buffer\n");
+                // chat__client_petition__pack(&userOption_new, buffer_option);
+                // printf("Pack de petition\n");
 
-                if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
-                    perror("!error in the message");
-                    exit(1);
-                }
-                printf("Paso el socket\n");
+                // if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
+                //     perror("!error in the message");
+                //     exit(1);
+                // }
+                // printf("Paso el socket\n");
 
-                free(buffer_option);
-                printf("\n");
+                // free(buffer_option);
+                // printf("\n");
                 break;
             }
 
