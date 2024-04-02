@@ -31,7 +31,7 @@ void menu() {
     printf("2. Send a direct message (DM)\n");
     printf("3. View connected users\n");
     printf("4. See user information\n");
-    printf("5. Change Status");
+    printf("5. Change Status\n");
     printf("6. Help\n");
     printf("7. Exit\n");
     printf("Select an option: ");
@@ -330,6 +330,7 @@ int main(int argc, char *argv[]) {
 
             case 6:{
                 helpCenter();
+                break;
             }
 
             case 7:{
