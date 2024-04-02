@@ -57,6 +57,23 @@ void addUser(char * username, char * ip, int socketFD, int status) {
     numUsers++;
 }
 
+// remove a user from the list
+void removeUser(char * username, char * ip, int socketFD, int status) {
+    int i, j;
+    for (i = 0; i < numUsers; i++) {
+        User user = userList[i];
+        if (strcmp(user.username, username) == 0 && strcmp(user.ip, ip) == 0 && user.socketFD == socketFD) {
+            for (j = i; j < numUsers - 1; j++) {
+                userList[j] = userList[j + 1];
+            }
+            numUsers--;
+            printf("!user removed: %s\n", username);
+            return;
+        }
+    }
+    printf("%s hasn't signed up\n", username);
+}
+
 // verify if the user is already registered
 int userExists(char * username) {
     int i;
@@ -81,7 +98,7 @@ const char* convertStatusToString(int status) {
         case 3:
             return "BUSY";
         default:
-            return "UNKNOWN";
+            return "ACTIVE";
     }
 }
 
@@ -147,6 +164,7 @@ void * handleClient(void * arg) {
 
         if (recv_size_option == 0) {
             perror("!client disconnected");
+            removeUser(MyInfo.username, MyInfo.ip, client_socket, MyInfo.status);
             break;
         }
 

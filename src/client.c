@@ -58,10 +58,9 @@ char* userStatus(char* status_value){
     } else if (strcmp(status_value, "BUSY") == 0) {
         return "BUSY";
     } else {
-        return "UNKNOWN";
+        return "ACTIVE";
     }
 }
-
 
 // function to handle the server response
 void *serverResponse(void *arg) {
