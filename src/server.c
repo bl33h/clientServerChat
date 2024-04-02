@@ -88,13 +88,12 @@ const char* convertStatusToString(int status) {
 // function to handle the clients requests
 void * handleClient(void * arg) {
     int client_socket = *(int *) arg;
-    uint8_t recv_buffer[BUFFER_SIZE];
-    ssize_t recv_size = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
+    char recv_buffer[BUFFER_SIZE];
+    int recv_size = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
     if (recv_size < 0) {
         perror("!error, unable to get message");
         exit(1);
     }
-
     Chat__ClientPetition *user_registration = chat__client_petition__unpack(NULL, recv_size, recv_buffer);
     if (user_registration == NULL) {
         fprintf(stderr, "!error, unable to unpack message\n");
@@ -124,7 +123,7 @@ void * handleClient(void * arg) {
     }
 
     size_t serialized_size_servidor_registro = chat__server_response__get_packed_size(&server_response_registro);
-    uint8_t *server_buffer_registro = malloc(serialized_size_servidor_registro);
+    void *server_buffer_registro = malloc(serialized_size_servidor_registro);
     chat__server_response__pack(&server_response_registro, server_buffer_registro);
 
     if (send(MyInfo.socketFD, server_buffer_registro, serialized_size_servidor_registro, 0) < 0) {
@@ -138,7 +137,7 @@ void * handleClient(void * arg) {
     while (1) {
 
         printf("\n");
-        uint8_t recv_buffer_option[BUFFER_SIZE];
+        uint8_t  recv_buffer_option[BUFFER_SIZE];
         ssize_t recv_size_option = recv(client_socket, recv_buffer_option, sizeof(recv_buffer_option), 0);
         
         if (recv_size_option < 0) {
@@ -189,7 +188,7 @@ void * handleClient(void * arg) {
                 server_response.connectedusers = &connected_users_response;
 
                 size_t serialized_size = chat__server_response__get_packed_size(&server_response);
-                uint8_t *buffer = malloc(serialized_size);
+                void *buffer = malloc(serialized_size);
                 chat__server_response__pack(&server_response, buffer);
 
                 if (send(MyInfo.socketFD, buffer, serialized_size, 0) < 0) {
@@ -235,7 +234,7 @@ void * handleClient(void * arg) {
                         server_response.code = 200;
 
                         size_t response_size = chat__server_response__get_packed_size(&server_response);
-                        uint8_t *response_buf = malloc(response_size);
+                        void *response_buf = malloc(response_size);
                         chat__server_response__pack(&server_response, response_buf);
 
                         if (send(MyInfo.socketFD, response_buf, response_size, 0) < 0) {
@@ -270,7 +269,7 @@ void * handleClient(void * arg) {
                         server_response.messagecommunication = received_message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
                         if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0){
@@ -301,7 +300,7 @@ void * handleClient(void * arg) {
                         server_response.messagecommunication = received_message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
                         if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0){
@@ -320,7 +319,7 @@ void * handleClient(void * arg) {
                         server_response.servermessage = received_message->message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
-                        uint8_t *server_buffer = malloc(serialized_size_server);
+                        void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
                         if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
@@ -355,7 +354,7 @@ void * handleClient(void * arg) {
 		        server_response.userinforesponse = &user_info_request;
 
 		        size_t serialized_size = chat__server_response__get_packed_size(&server_response);
-		        uint8_t *buffer = malloc(serialized_size);
+		        void *buffer = malloc(serialized_size);
 		        chat__server_response__pack(&server_response, buffer);
 
 		        if (send(MyInfo.socketFD, buffer, serialized_size, 0) < 0) {

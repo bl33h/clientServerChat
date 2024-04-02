@@ -66,7 +66,7 @@ char* userStatus(char* status_value){
 // function to handle the server response
 void *serverResponse(void *arg) {
     int socket = *(int *)arg;
-    uint8_t buffer_rx[BUFFER_SIZE];
+    int  buffer_rx[BUFFER_SIZE];
     ssize_t bytesR;
 
     while (1) {
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
     petition.registration = &registration;
 
     size_t len = chat__client_petition__get_packed_size(&petition);
-    uint8_t *buf = malloc(len);
+    void *buf = malloc(len);
     chat__client_petition__pack(&petition, buf);
 
     if (send(clientSocket, buf, len, 0) < 0) {
@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
                 userOption_new.messagecommunication = &userMessage;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
-                uint8_t *buffer_option = malloc(serialized_size_option);
+                void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&userOption_new, buffer_option);
                 
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
                 userOption_new.messagecommunication = &userMessage;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
-                uint8_t *buffer_option = malloc(serialized_size_option);
+                void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&userOption_new, buffer_option);
                 
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
                 userOption_new.option = 2;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
-                uint8_t *buffer_option = malloc(serialized_size_option);
+                void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&userOption_new, buffer_option);
                 
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
@@ -298,7 +298,7 @@ int main(int argc, char *argv[]) {
                 user_option_new.users = &user_info_request;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&user_option_new);
-                uint8_t *buffer_option = malloc(serialized_size_option);
+                void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&user_option_new, buffer_option);
 
 
@@ -342,7 +342,7 @@ int main(int argc, char *argv[]) {
                 user_option_new.change = &user_status;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&user_option_new);
-                uint8_t *buffer_option = malloc(serialized_size_option);
+                void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&user_option_new, buffer_option);
 
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
