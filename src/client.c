@@ -56,12 +56,14 @@ void *serverResponse(void *arg) {
     ssize_t bytesR;
 
     while (1) {
+    	printf("Justo antes socket\n");
         bytesR = recv(socket, buffer_rx, BUFFER_SIZE, 0);
+        printf("Luego socket\n");
         if (bytesR < 0) {
             printf("!error failed response\n");
             continue;
         }
-
+        printf("Justo antes answer\n");
         Chat__ServerResponse *answer = chat__server_response__unpack(NULL, bytesR, buffer_rx);
         if (answer == NULL) {
             printf("!error during the unpacking process\n");
@@ -87,6 +89,7 @@ void *serverResponse(void *arg) {
                 break;
             //status
             case 3:
+                printf("Si era");
                 break;
             //mesage
             case 4: 
@@ -99,7 +102,7 @@ void *serverResponse(void *arg) {
                 }
                 break;
             
-            // info específica
+            // info especÃ­fica
             case 5: 
                 break;
             default:
@@ -285,7 +288,42 @@ int main(int argc, char *argv[]) {
                 break;
             }
 
-            case 5:{
+            case 5:{// change status
+                int status;
+                printf("1. Active\n");
+                printf("2. Inactive\n");
+                printf("3. Busy\n");
+                printf("Select a status: ");
+                scanf("%d", &status);
+                
+                printf("Scan\n");
+
+                Chat__ChangeStatus userStatus = CHAT__CHANGE_STATUS__INIT;
+                userStatus.username = username;
+                userStatus.status = status;
+                
+                printf("Crea status\n");
+
+                Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
+                userOption_new.option = 3;
+                userOption_new.change = &userStatus;
+                printf("Crea petition \n");
+
+                size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
+                printf("Serialize\n");
+                uint8_t *buffer_option = malloc(serialized_size_option);
+                printf("Buffer\n");
+                chat__client_petition__pack(&userOption_new, buffer_option);
+                printf("Pack de petition\n");
+
+                if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
+                    perror("!error in the message");
+                    exit(1);
+                }
+                printf("Paso el socket\n");
+
+                free(buffer_option);
+                printf("\n");
                 break;
             }
 

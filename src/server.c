@@ -187,6 +187,51 @@ void * handleClient(void * arg) {
             }
 
             case 3:{
+                Chat__ChangeStatus *status_change = client_option->change;
+                int user_found = 0;
+                for (int i = 0; i < numUsers; i++){
+                    if (strcmp(userList[i].username, status_change->username) == 0){
+                        userList[i].status = status_change->status;
+                        user_found = 1;
+                        break;
+                    }
+                }
+
+                if (user_found == 1){
+                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                    server_response.option = 3;
+                    server_response.code = 200;
+                    server_response.change = status_change;
+
+                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                    uint8_t *server_buffer = malloc(serialized_size_server);
+                    chat__server_response__pack(&server_response, server_buffer);
+
+                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        perror("!error in response");
+                        exit(1);
+                    }
+
+                    free(server_buffer);
+                }
+                else{
+                    Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                    server_response.option = 3;
+                    server_response.code = 400;
+                    server_response.servermessage = "!error, user not found";
+                    server_response.change = status_change;
+
+                    size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
+                    uint8_t *server_buffer = malloc(serialized_size_server);
+                    chat__server_response__pack(&server_response, server_buffer);
+
+                    if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        perror("!error in response");
+                        exit(1);
+                    }
+
+                    free(server_buffer);
+                }
                 break;
             }
 
