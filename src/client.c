@@ -313,6 +313,7 @@ int main(int argc, char *argv[]) {
 
 
                 free(buffer_option);
+                free(user_info_request.user);
                 break;
             }
 
