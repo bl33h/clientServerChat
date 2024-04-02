@@ -32,7 +32,19 @@ void menu() {
     printf("3. View connected users\n");
     printf("4. See user information\n");
     printf("5. Exit\n");
+    printf("6. Help\n");
     printf("Select an option: ");
+}
+
+// help menu
+void helpCenter() {
+    printf("\n-<-- Help center --->\n");
+    printf("1. Here you will be in the general room where you can chat with everybody\n");
+    printf("2. Here you will be able to send a direct message to the user of your choice\n");
+    printf("3. Here you will see everybody that's connected to the server\n");
+    printf("4. Here you can see the information of the connected users\n");
+    printf("5. Here you can leave the chat\n");
+    printf("6. Here you display this message (:\n");
 }
 
 // function to handle the server response
