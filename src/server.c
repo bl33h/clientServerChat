@@ -78,11 +78,13 @@ void * handleClient(void * arg) {
         exit(1);
     }
 
+    printf("Antes del petition.");
     Chat__ClientPetition *user_registration = chat__client_petition__unpack(NULL, recv_size, recv_buffer);
     if (user_registration == NULL) {
         fprintf(stderr, "!error, unable to unpack message\n");
         exit(1);
     }
+    printf("Despues del petition.");
     Chat__UserRegistration *chat_registration = user_registration->registration;
 
     printf("\n > connected >user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
@@ -148,7 +150,39 @@ void * handleClient(void * arg) {
                 break;
             }
             case 2:{
-                
+                Chat__ConnectedUsersResponse connected_users_response = CHAT__CONNECTED_USERS_RESPONSE__INIT;
+                connected_users_response.n_connectedusers = numUsers;
+
+                connected_users_response.connectedusers = malloc(sizeof(Chat__UserInfo *) * numUsers);
+                if (connected_users_response.connectedusers == NULL) {
+                    perror("Error: No se pudo asignar memoria para connectedusers.");
+                }
+
+                for (int i = 0; i < numUsers; i++) {
+                    Chat__UserInfo user_info = CHAT__USER_INFO__INIT;
+                    user_info.username = userList[i].username;
+                    user_info.ip = userList[i].ip;
+                    user_info.status = userList[i].status;
+                    connected_users_response.connectedusers[i] = &user_info;
+                }
+
+                size_t serialized_size_connected_users = chat__connected_users_response__get_packed_size(&connected_users_response);
+                uint8_t *buffer_connected_users = malloc(serialized_size_connected_users);
+                if (buffer_connected_users == NULL) {
+                    perror("Error: No se pudo asignar memoria para el buffer_connected_users.");
+                }
+
+                chat__connected_users_response__pack(&connected_users_response, buffer_connected_users);
+
+                if (send(MyInfo.socketFD, buffer_connected_users, serialized_size_connected_users, 0) < 0) {
+                    perror("Error: No se pudo enviar la lista de usuarios conectados al cliente.");
+                }
+
+                free(buffer_connected_users);
+                for (int i = 0; i < numUsers; i++) {
+                    free(connected_users_response.connectedusers[i]);
+                }
+                free(connected_users_response.connectedusers);
                 break;
             }
 

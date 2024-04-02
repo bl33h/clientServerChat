@@ -31,8 +31,9 @@ void menu() {
     printf("2. Send a direct message (DM)\n");
     printf("3. View connected users\n");
     printf("4. See user information\n");
-    printf("5. Exit\n");
+    printf("5. Change Status");
     printf("6. Help\n");
+    printf("7. Exit\n");
     printf("Select an option: ");
 }
 
@@ -43,8 +44,9 @@ void helpCenter() {
     printf("2. Here you will be able to send a direct message to the user of your choice\n");
     printf("3. Here you will see everybody that's connected to the server\n");
     printf("4. Here you can see the information of the connected users\n");
-    printf("5. Here you can leave the chat\n");
-    printf("6. Here you display this message (:\n");
+    printf("5. Here you can change your status\n");
+    printf("6. Here you will see this complete message.\n");
+    printf("7. Here you will exit the chat\n");
 }
 
 // function to handle the server response
@@ -75,6 +77,13 @@ void *serverResponse(void *arg) {
             case 1: break;
             // connected users list
             case 2: 
+                printf("Connected users:\n");
+                for (size_t i = 0; i < answer->connectedusers->n_connectedusers; i++) {
+                    Chat__UserInfo *connected_user = answer->connectedusers->connectedusers[i];
+                    
+                    printf("Username: %s\n", connected_user->username);
+                    printf("\n");
+                }
                 break;
             //status
             case 3:
@@ -93,12 +102,6 @@ void *serverResponse(void *arg) {
             // info específica
             case 5: 
                 break;
-            //help
-            case 6:
-                break;
-            // exit
-            case 7:
-                break;
             default:
                 printf("Unknown option received from server.\n");
                 break;
@@ -109,6 +112,8 @@ void *serverResponse(void *arg) {
 
     return NULL;
 }
+
+
 
 // function to get the user status
 char* userStatus(int status_value){
@@ -258,6 +263,21 @@ int main(int argc, char *argv[]) {
             }
 
             case 3:{
+                Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
+                userOption_new.option = 2;
+                userOption_new.registration = &registration;
+                
+                size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
+                uint8_t *buffer_option = malloc(serialized_size_option);
+                chat__client_petition__pack(&userOption_new, buffer_option);
+                
+                if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
+                    perror("!error in the message");
+                    exit(1);
+                }
+
+                free(buffer_option);
+                printf("\n");
                 break;
             }
 
@@ -267,12 +287,17 @@ int main(int argc, char *argv[]) {
 
             case 5:{
                 break;
-
             }
 
             case 6:{
                 helpCenter();
             }
+
+            case 7:{
+                userOption = 5;
+                break;
+            }
+
             default:
                 break;
         }
