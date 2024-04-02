@@ -326,7 +326,7 @@ void * handleClient(void * arg) {
                         server_response.option= 2;
                         server_response.code = 400;
                         server_response.servermessage = "!error, user not found";
-                        server_response.servermessage = received_message;
+                        server_response.servermessage = received_message->message;
 
                         size_t serialized_size_server = chat__server_response__get_packed_size(&server_response);
                         uint8_t *server_buffer = malloc(serialized_size_server);
