@@ -129,7 +129,7 @@ void * handleClient(void * arg) {
     
     Chat__UserRegistration *chat_registration = user_registration->registration;
 
-    printf("\n >connected >>user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
+    printf("\n >connected >>user: %s  >>>ip: %s\n", chat_registration->username, chat_registration->ip);
 
     User MyInfo;
     strcpy(MyInfo.username, chat_registration->username);
@@ -184,6 +184,14 @@ void * handleClient(void * arg) {
             exit(1);
         }
 
+        User* user = findUserByUsername(MyInfo.username);
+        if (user != NULL) {
+            pthread_mutex_lock(&clients_mutex);
+            user->status = 1; // Set status to ACTIVE
+            user->activityTimer = time(NULL); // Update activity timer
+            pthread_mutex_unlock(&clients_mutex);
+        }
+
         int selected_option = client_option -> option;
          printf("[%s] ---> Using option ---> [%d]", MyInfo.username, selected_option);
 
@@ -223,7 +231,7 @@ void * handleClient(void * arg) {
                     perror("!error in sending connected users list");
                 }
 
-                // rfee allocated memory
+                // free allocated memory
                 free(buffer);
                 for (int i = 0; i < numUsers; i++) {
                     free(connected_users_response.connectedusers[i]->username);
@@ -277,14 +285,15 @@ void * handleClient(void * arg) {
                 break;
             }
 
-            case 4:{
+            // message communication
+            case 4: {
                 Chat__MessageCommunication *received_message = client_option->messagecommunication;
-                if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0){
+                if (strcmp(received_message->recipient, "everyone") == 0 || strcmp(received_message->recipient, "") == 0) {
                     printf("\n");
 
-                    for (int i = 0; i < numUsers; i++){
-                        if (strcmp(userList[i].username, MyInfo.username) == 0){
-                            if (userList[i].status == 3){
+                    for (int i = 0; i < numUsers; i++) {
+                        if (strcmp(userList[i].username, MyInfo.username) == 0) {
+                            if (userList[i].status == 3) {
                                 userList[i].status = 1;
                             }
                             userList[i].activityTimer = time(NULL);
@@ -292,7 +301,7 @@ void * handleClient(void * arg) {
                         }
 
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                        server_response.option= 4;
+                        server_response.option = 4;
                         server_response.code = 200;
                         server_response.messagecommunication = received_message;
 
@@ -300,30 +309,29 @@ void * handleClient(void * arg) {
                         void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
-                        if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        if (send(userList[i].socketFD, server_buffer, serialized_size_server, 0) < 0) {
                             perror("!error in response");
                             exit(1);
                         }
 
                         free(server_buffer);
                     }
-                }
-                else{
+                } else {
                     printf("\n");
 
                     int sendMessage = 0;
                     int userId = 0;
-                    for (int i = 0; i < numUsers; i++){
-                        if (strcmp(userList[i].username, received_message->recipient) == 0){
+                    for (int i = 0; i < numUsers; i++) {
+                        if (strcmp(userList[i].username, received_message->recipient) == 0) {
                             userList[i].activityTimer = time(NULL);
                             sendMessage = 1;
                             userId = i;
                         }
                     }
 
-                    if (sendMessage == 1){
+                    if (sendMessage == 1) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                        server_response.option= 4;
+                        server_response.option = 4;
                         server_response.code = 200;
                         server_response.messagecommunication = received_message;
 
@@ -331,17 +339,15 @@ void * handleClient(void * arg) {
                         void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
-                        if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        if (send(userList[userId].socketFD, server_buffer, serialized_size_server, 0) < 0) {
                             perror("!error in response");
                             exit(1);
                         }
 
                         free(server_buffer);
-                    }
-                    else{
-
+                    } else {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-                        server_response.option= 4;
+                        server_response.option = 4;
                         server_response.code = 400;
                         server_response.servermessage = "!error, user not found";
                         server_response.servermessage = received_message->message;
@@ -350,7 +356,7 @@ void * handleClient(void * arg) {
                         void *server_buffer = malloc(serialized_size_server);
                         chat__server_response__pack(&server_response, server_buffer);
 
-                        if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0){
+                        if (send(MyInfo.socketFD, server_buffer, serialized_size_server, 0) < 0) {
                             perror("!error in response");
                             exit(1);
                         }
@@ -358,28 +364,32 @@ void * handleClient(void * arg) {
                         free(server_buffer);
                     }
                 }
+
+                break;
             }
 
             // user info
-            case 5: { // Assuming 5 is for user info request
+            case 5: {
                 Chat__UserRequest *user_request = client_option->users;
                 User *user = findUserByUsername(user_request->user);
                 Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                 chat__server_response__init(&server_response);
                 
                 if (user) {
-                    // User found, prepare and send user info
+
+                    // found user
                     Chat__UserInfo user_info = CHAT__USER_INFO__INIT;
                     chat__user_info__init(&user_info);
                     user_info.username = user->username;
-                    user_info.status = convertStatusToString(user->status);
+                    user_info.status = strdup(convertStatusToString(user->status));
                     user_info.ip = user->ip;
 
                     server_response.option = 5;
                     server_response.code = 200;
                     server_response.userinforesponse = &user_info;
                 } else {
-                    // User not found, prepare and send error message
+
+                    // user not found
                     server_response.option = 5;
                     server_response.code = 404;
                     server_response.servermessage = "User not found";
@@ -415,7 +425,7 @@ void *activityT(void *arg) {
         time_t currentTime = time(NULL);
         pthread_mutex_lock(&clients_mutex);
         for (int i = 0; i < numUsers; i++) {
-            if (currentTime - userList[i].activityTimer > 45) {
+            if ((currentTime - userList[i].activityTimer > 45) && (userList[i].status != 2)) {
                 printf("!user %s has changed status due to inactivity\n", userList[i].username);
                 
                 userList[i].status = 2;
@@ -456,6 +466,12 @@ int main(int argc, char **argv) {
     listen(server_socket, BACKLOG);
     printf("Server listening on port [%d]\n", server_port);
 
+    // Create a separate thread for handling inactivity
+    pthread_t inactivity_thread;
+    if (pthread_create(&inactivity_thread, NULL, activityT, NULL) != 0) {
+        perror("!error creating inactivity thread");
+    }
+    
     while (1) {
         struct sockaddr_in client_address;
         socklen_t client_address_len = sizeof(client_address);
@@ -463,43 +479,25 @@ int main(int argc, char **argv) {
         
         if (client_socket < 0) {
             perror("!error on accept client");
-
-            // continue to accept next connection
-            continue; 
+            continue; // continue to accept next connection
         }
 
         printf("Client connected from %s:%d\n", inet_ntoa(client_address.sin_addr), ntohs(client_address.sin_port));
 
         pthread_t thread;
         if (pthread_create(&thread, NULL, handleClient, (void *)&client_socket) != 0) {
-            perror("!error on creating thread");
-
-            // close the client socket if thread creation fails
-            close(client_socket); 
-
-            // continue to accept next connection
-            continue;
+            perror("!error on creating thread for client");
+            close(client_socket); // close the client socket if thread creation fails
+            continue; // continue to accept next connection
         }
 
-        pthread_t thread2;
-        if (pthread_create(&thread2, NULL, activityT, (void *)&client_socket) != 0) {
-            perror("!error on creating thread");
-
-            // close the client socket if thread creation fails
-            close(client_socket); 
-
-            // continue to accept next connection
-            continue;
-        }
-
-        // detach the thread to free resources upon completion
-        pthread_detach(thread); 
+        pthread_detach(thread); // detach the thread to free resources upon completion
     }
 
-    // close the server socket when done
-    close(server_socket); 
+    // clean up server resources
+    close(server_socket); // close the server socket when done
+    pthread_mutex_destroy(&lock); // cleanup the mutex
+    pthread_mutex_destroy(&clients_mutex);
 
-    // cleanup the mutex
-    pthread_mutex_destroy(&lock); 
     return 0;
 }
