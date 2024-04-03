@@ -88,6 +88,16 @@ int userExists(char * username) {
     return 0;
 }
 
+// find a user by username
+User* findUserByUsername(const char* username) {
+    for (int i = 0; i < numUsers; i++) {
+        if (strcmp(userList[i].username, username) == 0) {
+            return &userList[i]; // User found, return a pointer to the user
+        }
+    }
+    return NULL; // User not found
+}
+
 // status of the user
 const char* convertStatusToString(int status) {
     switch (status) {
@@ -116,7 +126,7 @@ void * handleClient(void * arg) {
         fprintf(stderr, "!error, unable to unpack message\n");
         exit(1);
     }
-
+    
     Chat__UserRegistration *chat_registration = user_registration->registration;
 
     printf("\n >connected >>user: %s  >>> ip: %s\n", chat_registration->username, chat_registration->ip);
@@ -351,36 +361,39 @@ void * handleClient(void * arg) {
             }
 
             // user info
-            case 5:{
-                if(client_option->users){
-                	Chat__UserRequest *user_request_response = client_option->users;
+            case 5: { // Assuming 5 is for user info request
+                Chat__UserRequest *user_request = client_option->users;
+                User *user = findUserByUsername(user_request->user);
+                Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
+                chat__server_response__init(&server_response);
                 
-		        Chat__UserInfo user_info_request = CHAT__USER_INFO__INIT;
+                if (user) {
+                    // User found, prepare and send user info
+                    Chat__UserInfo user_info = CHAT__USER_INFO__INIT;
+                    chat__user_info__init(&user_info);
+                    user_info.username = user->username;
+                    user_info.status = convertStatusToString(user->status);
+                    user_info.ip = user->ip;
 
-		        for (int i = 0; i < numUsers; i++) {
-		            if (strcmp(userList[i].username, user_request_response->user) == 0) {
-		                user_info_request.username = strdup(userList[i].username);
-		                user_info_request.status = strdup(convertStatusToString(userList[i].status));
-		                user_info_request.ip = strdup(userList[i].ip);
-		                break;
-		            }
-		        }
-
-		        Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
-		        server_response.option = 5;
-		        server_response.code = 200;
-		        server_response.userinforesponse = &user_info_request;
-
-		        size_t serialized_size = chat__server_response__get_packed_size(&server_response);
-		        void *buffer = malloc(serialized_size);
-		        chat__server_response__pack(&server_response, buffer);
-
-		        if (send(MyInfo.socketFD, buffer, serialized_size, 0) < 0) {
-		            perror("!error in sending user info");
-		        }
-
-		        free(buffer);
+                    server_response.option = 5;
+                    server_response.code = 200;
+                    server_response.userinforesponse = &user_info;
+                } else {
+                    // User not found, prepare and send error message
+                    server_response.option = 5;
+                    server_response.code = 404;
+                    server_response.servermessage = "User not found";
                 }
+
+                size_t serialized_size = chat__server_response__get_packed_size(&server_response);
+                void *buffer = malloc(serialized_size);
+                chat__server_response__pack(&server_response, buffer);
+
+                if (send(client_socket, buffer, serialized_size, 0) < 0) {
+                    perror("Failed to send user information or error message");
+                }
+
+                free(buffer);
                 break;
             }
             

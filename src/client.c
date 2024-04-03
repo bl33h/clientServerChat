@@ -283,29 +283,27 @@ int main(int argc, char *argv[]) {
             }
 
             // see user information
-            case 4:{
+            case 4: {
                 char user_info[BUFFER_SIZE];
 
-                printf("Insert the username you want to see the information: ");
+                printf("Enter username to view information: ");
                 scanf(" %[^\n]", user_info);
 
-                Chat__UserRequest user_info_request = CHAT__USER_REQUEST__INIT;
-                user_info_request.user = user_info;
+                Chat__UserRequest user_request = CHAT__USER_REQUEST__INIT;
+                user_request.user = user_info;
 
                 Chat__ClientPetition user_option_new = CHAT__CLIENT_PETITION__INIT;
-                user_option_new.option = 5;
-                user_option_new.users = &user_info_request;
+                user_option_new.option = 5; // Assuming 5 is for user info request
+                user_option_new.users = &user_request;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&user_option_new);
                 void *buffer_option = malloc(serialized_size_option);
                 chat__client_petition__pack(&user_option_new, buffer_option);
 
-
                 if (send(clientSocket, buffer_option, serialized_size_option, 0) < 0) {
-                    perror("!error, unable to get user information");
+                    perror("Error requesting user information");
                     exit(1);
                 }
-
 
                 free(buffer_option);
                 break;
