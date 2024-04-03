@@ -256,7 +256,7 @@ void * handleClient(void * arg) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                         server_response.option = 3;
                         server_response.code = 200;
-                        server_response.changestatus = status_change;
+                        server_response.change = status_change;
                         size_t response_size = chat__server_response__get_packed_size(&server_response);
                         void *response_buf = malloc(response_size);
                         chat__server_response__pack(&server_response, response_buf);
