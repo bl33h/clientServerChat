@@ -136,22 +136,22 @@ void * handleClient(void * arg) {
     strcpy(MyInfo.ip, chat_registration->ip);
     MyInfo.socketFD = client_socket;
 
-    Chat__ServerResponse server_response_registro = CHAT__SERVER_RESPONSE__INIT;
+    Chat__ServerResponse userSignupResponse = CHAT__SERVER_RESPONSE__INIT;
 
     if (!userExists(chat_registration->username)) {
         addUser(chat_registration->username, chat_registration->ip, client_socket, 1);
-        server_response_registro.option = 0;
-        server_response_registro.code = 200;
-        server_response_registro.servermessage = "success";
+        userSignupResponse.option = 0;
+        userSignupResponse.code = 200;
+        userSignupResponse.servermessage = "success";
     } else {
-        server_response_registro.option = 0;
-        server_response_registro.code = 400;
-        server_response_registro.servermessage = "already signed up";
+        userSignupResponse.option = 0;
+        userSignupResponse.code = 400;
+        userSignupResponse.servermessage = "username already exists, please choose another.";
     }
 
-    size_t serialized_size_servidor_registro = chat__server_response__get_packed_size(&server_response_registro);
+    size_t serialized_size_servidor_registro = chat__server_response__get_packed_size(&userSignupResponse);
     void *server_buffer_registro = malloc(serialized_size_servidor_registro);
-    chat__server_response__pack(&server_response_registro, server_buffer_registro);
+    chat__server_response__pack(&userSignupResponse, server_buffer_registro);
 
     if (send(MyInfo.socketFD, server_buffer_registro, serialized_size_servidor_registro, 0) < 0) {
         perror("!error unable to send response");
@@ -471,7 +471,7 @@ int main(int argc, char **argv) {
     if (pthread_create(&inactivity_thread, NULL, activityT, NULL) != 0) {
         perror("!error creating inactivity thread");
     }
-    
+
     while (1) {
         struct sockaddr_in client_address;
         socklen_t client_address_len = sizeof(client_address);

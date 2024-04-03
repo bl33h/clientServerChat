@@ -22,6 +22,7 @@ Last modification: 02/04/2024
 // --- variables ---
 #define BUFFER_SIZE 1024
 int clientSocket = 0;
+int registrationSuccess = 0;
 
 // --- methods ---
 // function to display the menu
@@ -83,6 +84,15 @@ void *serverResponse(void *arg) {
 
             // registration response
             case 1: 
+                if (answer->code == 200) {
+                    Chat__ConnectedUsersResponse *users_response = answer->connectedusers;
+                    if (users_response->n_connectedusers > 0) {
+                        Chat__UserInfo *user = users_response->connectedusers[1]; // Assuming the first user is the one you want
+                        printf("\n> Welcome to the chat, %s\n", user->username); // Correct member
+                    }
+                } else {
+                    printf("\n> Error: %s\n", answer->servermessage); // Correct member
+                }
                 break;
 
             // connected users list
@@ -107,10 +117,10 @@ void *serverResponse(void *arg) {
             //mesage
             case 4: 
                 {if (strcmp(answer->messagecommunication->recipient, "everyone") == 0 || strcmp(answer->messagecommunication->recipient, "") == 0) {
-                    printf("[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                    printf("\n[GLOBAL] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                 } else {
                     if (answer->code == 200 && answer->messagecommunication) {
-                        printf("[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
+                        printf("\n[PRIVATE] %s: %s\n", answer->messagecommunication->sender, answer->messagecommunication->message);
                     }
                 }}
                 break;
@@ -170,6 +180,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, serverResponse, &clientSocket) != 0) {
+        perror("pthread_create");
+        return -1;
+    }
+
     // user registration
     Chat__UserRegistration registration = CHAT__USER_REGISTRATION__INIT;
     registration.username = username;
@@ -189,12 +205,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     free(buf);
-
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, serverResponse, &clientSocket) != 0) {
-        perror("pthread_create");
-        return -1;
-    }
 
     while (userOption != 7) {
         menu();
