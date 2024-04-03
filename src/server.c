@@ -238,7 +238,13 @@ void * handleClient(void * arg) {
                             userList[i].status = 2;
                         } else if (strcmp(status_change->status, "BUSY") == 0) {
                             userList[i].status = 3;
-                        } else {
+                        } else if (strcmp(status_change->status, "activo") == 0) {
+                            userList[i].status = 1;
+                        } else if (strcmp(status_change->status, "inactivo") == 0) {
+                            userList[i].status = 2;
+                        } else if (strcmp(status_change->status, "ocupado") == 0) {
+                            userList[i].status = 3;
+                        }else {
 
                             // handle unexpected status string
                             printf("Received unexpected status string: %s\n", status_change->status);
@@ -250,7 +256,7 @@ void * handleClient(void * arg) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                         server_response.option = 3;
                         server_response.code = 200;
-
+                        server_response.changestatus = status_change;
                         size_t response_size = chat__server_response__get_packed_size(&server_response);
                         void *response_buf = malloc(response_size);
                         chat__server_response__pack(&server_response, response_buf);
