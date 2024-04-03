@@ -267,8 +267,12 @@ int main(int argc, char *argv[]) {
 
             // view connected users
             case 3:{
+                Chat__UserRequest userRequest = CHAT__USER_REQUEST__INIT;
+                userRequest.user = "everyone";
+
                 Chat__ClientPetition userOption_new = CHAT__CLIENT_PETITION__INIT;
                 userOption_new.option = 2;
+                userOption_new.users = &userRequest;
 
                 size_t serialized_size_option = chat__client_petition__get_packed_size(&userOption_new);
                 void *buffer_option = malloc(serialized_size_option);
