@@ -248,13 +248,7 @@ void * handleClient(void * arg) {
                             userList[i].status = 2;
                         } else if (strcmp(status_change->status, "BUSY") == 0) {
                             userList[i].status = 3;
-                        } else if (strcmp(status_change->status, "activo") == 0) {
-                            userList[i].status = 1;
-                        } else if (strcmp(status_change->status, "inactivo") == 0) {
-                            userList[i].status = 2;
-                        } else if (strcmp(status_change->status, "ocupado") == 0) {
-                            userList[i].status = 3;
-                        }else {
+                        } else {
 
                             // handle unexpected status string
                             printf("Received unexpected status string: %s\n", status_change->status);
@@ -266,7 +260,7 @@ void * handleClient(void * arg) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                         server_response.option = 3;
                         server_response.code = 200;
-                        server_response.change = status_change;
+
                         size_t response_size = chat__server_response__get_packed_size(&server_response);
                         void *response_buf = malloc(response_size);
                         chat__server_response__pack(&server_response, response_buf);
@@ -414,6 +408,25 @@ void * handleClient(void * arg) {
     close(client_socket);
 }
 
+// disconnect users due to inactivity
+void *activityT(void *arg) {
+    while (1) {
+        sleep(10);
+        time_t currentTime = time(NULL);
+        pthread_mutex_lock(&clients_mutex);
+        for (int i = 0; i < numUsers; i++) {
+            if (currentTime - userList[i].activityTimer > 45) {
+                printf("!user %s has changed status due to inactivity\n", userList[i].username);
+                
+                userList[i].status = 2;
+            }
+        }
+
+        pthread_mutex_unlock(&clients_mutex);
+    }
+
+    return NULL;
+}
 
 // main method
 int main(int argc, char **argv) {
@@ -459,6 +472,17 @@ int main(int argc, char **argv) {
 
         pthread_t thread;
         if (pthread_create(&thread, NULL, handleClient, (void *)&client_socket) != 0) {
+            perror("!error on creating thread");
+
+            // close the client socket if thread creation fails
+            close(client_socket); 
+
+            // continue to accept next connection
+            continue;
+        }
+
+        pthread_t thread2;
+        if (pthread_create(&thread2, NULL, activityT, (void *)&client_socket) != 0) {
             perror("!error on creating thread");
 
             // close the client socket if thread creation fails
