@@ -108,7 +108,7 @@ const char* convertStatusToString(int status) {
         case 3:
             return "BUSY";
         default:
-            return "ACTIVE";
+            return "sieraaaaaaaa";
     }
 }
 
@@ -121,6 +121,7 @@ void * handleClient(void * arg) {
         perror("!error, unable to get message");
         exit(1);
     }
+
     Chat__ClientPetition *user_registration = chat__client_petition__unpack(NULL, recv_size, recv_buffer);
     if (user_registration == NULL) {
         fprintf(stderr, "!error, unable to unpack message\n");
@@ -140,11 +141,11 @@ void * handleClient(void * arg) {
 
     if (!userExists(chat_registration->username)) {
         addUser(chat_registration->username, chat_registration->ip, client_socket, 1);
-        server_response_registro.option = 0;
+        server_response_registro.option = 1;
         server_response_registro.code = 200;
         server_response_registro.servermessage = "success";
     } else {
-        server_response_registro.option = 0;
+        server_response_registro.option = 1;
         server_response_registro.code = 400;
         server_response_registro.servermessage = "already signed up";
     }
@@ -156,6 +157,12 @@ void * handleClient(void * arg) {
     if (send(MyInfo.socketFD, server_buffer_registro, serialized_size_servidor_registro, 0) < 0) {
         perror("!error unable to send response");
         exit(1);
+    }
+
+    if(server_response_registro.code == 200){
+        printf("User %s has been registered\n", MyInfo.username);
+    } else {
+        printf("User %s is already registered\n", MyInfo.username);
     }
     free(server_buffer_registro);
     chat__client_petition__free_unpacked(user_registration, NULL);
@@ -187,7 +194,6 @@ void * handleClient(void * arg) {
         User* user = findUserByUsername(MyInfo.username);
         if (user != NULL) {
             pthread_mutex_lock(&clients_mutex);
-            user->status = 1; // Set status to ACTIVE
             user->activityTimer = time(NULL); // Update activity timer
             pthread_mutex_unlock(&clients_mutex);
         }
@@ -256,7 +262,13 @@ void * handleClient(void * arg) {
                             userList[i].status = 2;
                         } else if (strcmp(status_change->status, "BUSY") == 0) {
                             userList[i].status = 3;
-                        } else {
+                        } else if (strcmp(status_change->status, "activo") == 0) {
+                            userList[i].status = 1;
+                        } else if (strcmp(status_change->status, "inactivo") == 0) {
+                            userList[i].status = 2;
+                        } else if (strcmp(status_change->status, "ocupado") == 0) {
+                            userList[i].status = 3;
+                        }else {
 
                             // handle unexpected status string
                             printf("Received unexpected status string: %s\n", status_change->status);
@@ -268,6 +280,7 @@ void * handleClient(void * arg) {
                         Chat__ServerResponse server_response = CHAT__SERVER_RESPONSE__INIT;
                         server_response.option = 3;
                         server_response.code = 200;
+                        server_response.change = status_change;
 
                         size_t response_size = chat__server_response__get_packed_size(&server_response);
                         void *response_buf = malloc(response_size);

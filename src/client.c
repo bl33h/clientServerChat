@@ -83,6 +83,12 @@ void *serverResponse(void *arg) {
 
             // registration response
             case 1: 
+                if (answer->code == 200) {
+                    printf("\n> Welcome to the chat");
+                } else {
+                    printf("\n> Error: Username already exists.\n");
+                    exit(EXIT_FAILURE);
+                }
                 break;
 
             // connected users list
@@ -183,6 +189,12 @@ int main(int argc, char *argv[]) {
     void *buf = malloc(len);
     chat__client_petition__pack(&petition, buf);
 
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, serverResponse, &clientSocket) != 0) {
+        perror("pthread_create");
+        return -1;
+    }
+
     if (send(clientSocket, buf, len, 0) < 0) {
         perror("send");
         free(buf);
@@ -190,11 +202,7 @@ int main(int argc, char *argv[]) {
     }
     free(buf);
 
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, serverResponse, &clientSocket) != 0) {
-        perror("pthread_create");
-        return -1;
-    }
+    
 
     while (userOption != 7) {
         menu();
