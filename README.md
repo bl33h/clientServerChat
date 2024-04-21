@@ -35,13 +35,9 @@ $ git clone https://github.com/bl33h/clientServerChat
 # Open the project
 $ cd src
 
-# Compile the server
+# Compile the server and client
 $ gcc -o server server.c chat.pb-c.c -lprotobuf-c -pthread
-$ ./server 8080 [THE PORT MIGHT BE DIFFERENT]
-
-# Compile the client
 $ gcc -o client client.c chat.pb-c.c -lprotobuf-c -pthread
-$ ./client username 127.0.0.1 [THE IP MIGHT BE DIFFERENT] 8080 [SAME PORT AS THE SERVER]
 
 # Start the server (specify the port number)
 $ ./server 12345
