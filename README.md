@@ -3,7 +3,7 @@ This is a chat application that facilitates communication between multiple clien
 
 <p align="center">
   <br>
-  <img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWtqZmU5Z2Ezb25sbnBoeGp1d3dkM2o4cXhqYXh0bHlrcmN3bTJldSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/uVh0kfacVZRINkCBiG/giphy.gif" alt="screensaver" width="500">
+  <img src="https://i.pinimg.com/originals/0e/4a/c3/0e4ac37acbff81cd087aa19692a07a9d.gif" alt="Chat Application Architecture" width="500">
   <br>
 </p>
 <p align="center">
